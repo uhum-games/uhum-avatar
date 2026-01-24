@@ -1,0 +1,21 @@
+[package]
+name = "ua-view"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Uhum View layer for Avatar (routing, reactive state, view instructions)"
+
+[dependencies]
+# Internal crates
+ua-core = { workspace = true }
+ua-agent = { workspace = true }
+
+# Shared Uhum Brain crates
+ub-core = { workspace = true }
+ub-protocol = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Utilities
+tracing = { workspace = true }

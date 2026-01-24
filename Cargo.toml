@@ -1,0 +1,58 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/ua-core",
+    "crates/ua-agent",
+    "crates/ua-view",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/uhum/uhum-avatar"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.43", features = ["full"] }
+futures = "0.3"
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Utilities
+bytes = "1"
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+parking_lot = "0.12"
+
+# Logging & tracing
+tracing = "0.1"
+
+# WASM support (for browser)
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["console", "WebSocket", "MessageEvent", "CloseEvent", "ErrorEvent"] }
+
+# Testing
+tokio-test = "0.4"
+
+# Shared crates from uhum-brain
+ub-core = { path = "../uhum-brain/crates/ub-core" }
+ub-protocol = { path = "../uhum-brain/crates/ub-protocol" }
+
+# Internal crates
+ua-core = { path = "crates/ua-core" }
+ua-agent = { path = "crates/ua-agent" }
+ua-view = { path = "crates/ua-view" }
+
+[profile.release]
+lto = true
+codegen-units = 1

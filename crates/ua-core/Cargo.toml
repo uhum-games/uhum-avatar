@@ -1,0 +1,20 @@
+[package]
+name = "ua-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared types and platform boundary traits for UHUM Avatar"
+
+[dependencies]
+# Shared Uhum Brain crates
+ub-core = { workspace = true }
+ub-protocol = { workspace = true }
+
+# Async
+async-trait = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Utilities
+bytes = { workspace = true }
