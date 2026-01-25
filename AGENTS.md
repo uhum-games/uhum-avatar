@@ -480,18 +480,29 @@ uhum-avatar/
 │
 ├── platforms/                 # Platform-specific code (non-Rust)
 │   ├── browser/               # TypeScript/React
-│   │   ├── package.json
-│   │   └── src/
-│   │       ├── index.ts       # Main exports
-│   │       ├── avatar.ts      # AvatarClient class
-│   │       ├── hooks/         # React hooks (useAvatar, useAgent)
-│   │       └── components/    # Uhum View components
+│   │   ├── lib/               # Avatar library (internal)
+│   │   │   └── src/
+│   │   │       ├── index.ts       # Library exports
+│   │   │       ├── avatar.ts      # AvatarClient class
+│   │   │       ├── directory.ts   # Directory service client
+│   │   │       ├── hooks/         # React hooks (useAvatar, useAgent)
+│   │   │       └── components/    # Uhum View components
+│   │   │
+│   │   ├── app/               # Deployable Avatar app
+│   │   │   └── src/
+│   │   │       ├── main.tsx       # Entry point
+│   │   │       ├── App.tsx        # Root with directory resolution
+│   │   │       └── styles.css     # Global styles
+│   │   │
+│   │   ├── package.json       # Workspace root
+│   │   └── pnpm-workspace.yaml
 │   │
 │   ├── ios/                   # Swift/SwiftUI (future)
 │   ├── android/               # Kotlin/Compose (future)
 │   └── desktop/               # Tauri app (future)
 │
 └── specs/                     # Specifications
+    ├── BROWSER-DEPLOYMENT.md  # Browser deployment architecture
     ├── UHUM-VIEW.md           # Layered rendering architecture
     ├── VIEW-INSTRUCTIONS.md   # Reactive architecture spec
     ├── SMART-ROUTING.md       # Input handling spec

@@ -33,7 +33,7 @@ The Avatar runs on specific platforms:
 ```
 uhum-avatar/
 ├── Cargo.toml              # Rust workspace
-├── Justfile                # Build commands (like npm scripts)
+├── Justfile                # Build commands
 ├── AGENTS.md               # AI agent guidelines
 │
 ├── crates/                 # Rust crates
@@ -44,16 +44,39 @@ uhum-avatar/
 │
 ├── platforms/              # Platform-specific implementations
 │   └── browser/            # TypeScript + React
-│       ├── src/            # @uhum/avatar package
-│       └── examples/
-│           └── quick-start/  # Quick-start invoice app
+│       ├── lib/            # Avatar library (internal)
+│       │   └── src/        # Client, hooks, components, protocol
+│       ├── app/            # Deployable Avatar app
+│       │   └── src/        # Main app with directory resolution
+│       └── README.md       # Browser platform docs
 │
 └── specs/                  # Specifications
-    ├── UHUM-VIEW.md        # Rendering architecture
-    ├── VIEW-INSTRUCTIONS.md # Reactive state management
-    ├── SMART-ROUTING.md    # Input handling
-    └── PLATFORMS.md        # Platform architecture
+    ├── BROWSER-DEPLOYMENT.md  # Browser deployment architecture
+    ├── UHUM-VIEW.md           # Rendering architecture
+    ├── VIEW-INSTRUCTIONS.md   # Reactive state management
+    ├── SMART-ROUTING.md       # Input handling
+    └── PLATFORMS.md           # Platform architecture
 ```
+
+## Browser Platform Architecture
+
+Each agent gets their own Avatar bundle with the **agent ID baked in at build time**. The Brain WebSocket URL is resolved at runtime from the **Directory Service**.
+
+```
+BUILD TIME (per agent):
+  VITE_AGENT_ID=acme.billing pnpm build
+  → Bundle contains AGENT_ID="acme.billing"
+  → Bundle does NOT contain Brain URL
+
+RUNTIME:
+  User visits acme.com
+  → CDN serves Acme's bundle
+  → Bundle calls: GET /resolve?agentId=acme.billing
+  → Directory returns: { wsUrl: "wss://brain.acme.com" }
+  → Bundle connects to Brain
+```
+
+See [specs/BROWSER-DEPLOYMENT.md](./specs/BROWSER-DEPLOYMENT.md) for full documentation.
 
 ## Core Architecture
 
@@ -109,6 +132,49 @@ just build
 just test
 ```
 
+### Browser Platform
+
+```bash
+cd platforms/browser
+
+# Install dependencies
+pnpm install
+
+# Development (mock mode - no agent ID needed)
+pnpm dev:mock
+
+# Development with specific agent
+VITE_AGENT_ID=acme.billing pnpm dev
+
+# Production build (requires agent ID)
+VITE_AGENT_ID=acme.billing pnpm build
+```
+
+### Local Development with Brain
+
+Run Avatar connected to a local Brain:
+
+```bash
+# Terminal 1: Start Brain (from uhum-brain)
+cd ../uhum-brain
+cargo run  # or: just dev
+
+# Terminal 2: Start Avatar (from uhum-avatar root)
+just dev browser
+
+# Or with a specific agent ID (use quotes for IDs with dots)
+just dev browser "quickstart.billing"
+```
+
+Open http://localhost:3000 — the Avatar will connect to your local Brain at `ws://localhost:8080`.
+
+For mock mode (no Brain needed):
+```bash
+just mock browser
+```
+
+See [platforms/browser/README.md](./platforms/browser/README.md) for detailed instructions.
+
 ### Manual Commands
 
 ```bash
@@ -120,46 +186,41 @@ cargo test
 
 # Build WASM for browser
 cd crates/ua-wasm
-wasm-pack build --target web --out-dir ../../platforms/browser/wasm
+wasm-pack build --target web --out-dir ../../platforms/browser/lib/wasm
 
-# Build TypeScript package
+# Build browser app
 cd platforms/browser
 pnpm install
-pnpm run build
+VITE_AGENT_ID=my.agent pnpm build
 ```
 
 ### Available Just Commands
 
+**Platform Commands** (pattern: `just <action> <platform> [args]`):
+
 | Command | Description |
 |---------|-------------|
-| `just build` | Build all Rust crates |
-| `just test` | Run all tests |
+| `just dev browser` | Dev server with local Brain (ws://localhost:8080) |
+| `just dev browser "my.agent"` | Dev server with specific agent ID |
+| `just mock browser` | Mock mode (no Brain needed) |
+| `just build browser "acme.billing"` | Build browser for production |
+| `just install browser` | Install browser dependencies |
+| `just test browser` | Run browser tests |
+
+**Rust Commands**:
+
+| Command | Description |
+|---------|-------------|
+| `just build-rust` | Build all Rust crates |
+| `just test` | Run all Rust tests |
 | `just build-wasm` | Build WASM for browser |
-| `just browser-build` | Build TypeScript package |
-| `just example-dev` | Run example app (localhost:3000) |
-| `just example-server` | Run mock Brain server |
-| `just setup` | Install all dependencies |
-| `just all` | Full production build |
 
-## Example App
+**Workflows**:
 
-An example invoice application showcasing the Avatar:
-
-```bash
-# Terminal 1: Start the Brain (from uhum-brain)
-just dev
-
-# Terminal 2: Start the Avatar example app
-just example-dev
-```
-
-Open http://localhost:3000
-
-Features:
-- 📋 Invoice management
-- 💳 Payment processing
-- 💬 Chat interface
-- ✨ Reactive UI updates
+| Command | Description |
+|---------|-------------|
+| `just setup` | Setup everything for development |
+| `just all AGENT_ID` | Full production build |
 
 ## Uhum View
 
@@ -177,6 +238,7 @@ See [specs/UHUM-VIEW.md](./specs/UHUM-VIEW.md) for full documentation.
 | Document | Description |
 |----------|-------------|
 | [AGENTS.md](./AGENTS.md) | AI agent guidelines |
+| [specs/BROWSER-DEPLOYMENT.md](./specs/BROWSER-DEPLOYMENT.md) | Browser deployment architecture |
 | [specs/UHUM-VIEW.md](./specs/UHUM-VIEW.md) | Rendering architecture |
 | [specs/VIEW-INSTRUCTIONS.md](./specs/VIEW-INSTRUCTIONS.md) | Reactive state management |
 | [specs/PLATFORMS.md](./specs/PLATFORMS.md) | Platform architecture |

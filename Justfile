@@ -7,73 +7,113 @@ default:
     @just --list
 
 # =============================================================================
-# Build Commands
+# Platform Commands
+# =============================================================================
+
+# Development server with local Brain: just dev browser [AGENT_ID]
+dev platform AGENT_ID="dev.agent":
+    @just _dev-{{platform}} "{{AGENT_ID}}"
+
+# Build for production: just build browser <AGENT_ID>
+build platform AGENT_ID:
+    @just _build-{{platform}} "{{AGENT_ID}}"
+
+# Mock mode - no Brain needed: just mock browser
+mock platform:
+    @just _mock-{{platform}}
+
+# Install dependencies: just install browser
+install platform:
+    @just _install-{{platform}}
+
+# Run tests: just test [browser]
+test platform="":
+    @if [ -z "{{platform}}" ]; then cargo test; else just _test-{{platform}}; fi
+
+# =============================================================================
+# Browser Platform (internal recipes)
+# =============================================================================
+
+# [internal] Dev with local Brain (ws://localhost:8080)
+_dev-browser AGENT_ID="dev.agent":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    # Check if dependencies are installed
+    if [ ! -d "platforms/browser/node_modules" ]; then
+        echo "⚠️  Dependencies not installed. Running: just install browser"
+        just _install-browser
+    fi
+    
+    echo "🚀 Starting Avatar dev server..."
+    echo "   Agent ID: {{AGENT_ID}}"
+    echo "   Brain URL: ws://localhost:8080"
+    echo ""
+    echo "   Make sure your Brain is running: cd ../uhum-brain && cargo run"
+    echo ""
+    
+    cd platforms/browser && \
+        VITE_MOCK_MODE=true \
+        VITE_MOCK_WS_URL=ws://localhost:8080 \
+        VITE_MOCK_AGENT_ID="{{AGENT_ID}}" \
+        pnpm dev
+
+# [internal] Build browser for production
+_build-browser AGENT_ID:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    # Check if dependencies are installed
+    if [ ! -d "platforms/browser/node_modules" ]; then
+        echo "⚠️  Dependencies not installed. Running: just install browser"
+        just _install-browser
+    fi
+    
+    echo "📦 Building Avatar for agent: {{AGENT_ID}}"
+    cd platforms/browser && VITE_AGENT_ID="{{AGENT_ID}}" pnpm build
+    echo "✅ Build complete: platforms/browser/app/dist/"
+
+# [internal] Mock mode (no Brain needed)
+_mock-browser:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    
+    # Check if dependencies are installed
+    if [ ! -d "platforms/browser/node_modules" ]; then
+        echo "⚠️  Dependencies not installed. Running: just install browser"
+        just _install-browser
+    fi
+    
+    echo "🎭 Starting Avatar in mock mode (no Brain required)"
+    cd platforms/browser && pnpm dev:mock
+
+# [internal] Install browser dependencies
+_install-browser:
+    cd platforms/browser && pnpm install
+
+# [internal] Run browser tests
+_test-browser:
+    cd platforms/browser && pnpm test
+
+# =============================================================================
+# Rust Build Commands
 # =============================================================================
 
 # Build all Rust crates
-build:
+build-rust:
     cargo build
 
 # Build in release mode
-build-release:
+build-rust-release:
     cargo build --release
 
 # Build WASM for browser (requires wasm-pack)
 build-wasm:
-    cd crates/ua-wasm && wasm-pack build --target web --out-dir ../../platforms/browser/wasm
+    cd crates/ua-wasm && wasm-pack build --target web --out-dir ../../platforms/browser/lib/wasm
 
 # Build WASM in release mode
 build-wasm-release:
-    cd crates/ua-wasm && wasm-pack build --release --target web --out-dir ../../platforms/browser/wasm
-
-# =============================================================================
-# Test Commands
-# =============================================================================
-
-# Run all tests
-test:
-    cargo test
-
-# Run tests with output
-test-verbose:
-    cargo test -- --nocapture
-
-# Run WASM tests in browser (requires wasm-pack)
-test-wasm:
-    cd crates/ua-wasm && wasm-pack test --headless --chrome
-
-# =============================================================================
-# Browser Platform
-# =============================================================================
-
-# Install browser package dependencies
-browser-install:
-    cd platforms/browser && pnpm install
-
-# Build browser TypeScript package
-browser-build:
-    cd platforms/browser && pnpm run build
-
-# =============================================================================
-# Quick Start Example
-# =============================================================================
-
-# Install quick-start example dependencies
-quick-start-install:
-    cd platforms/browser/examples/quick-start && pnpm install
-
-# Run the quick-start example (dev server)
-quick-start-dev:
-    cd platforms/browser/examples/quick-start && pnpm run dev
-
-# Run the mock Brain server for quick-start example
-quick-start-server:
-    cd platforms/browser/examples/quick-start && node mock-server.js
-
-# Aliases for convenience
-example-install: quick-start-install
-example-dev: quick-start-dev
-example-server: quick-start-server
+    cd crates/ua-wasm && wasm-pack build --release --target web --out-dir ../../platforms/browser/lib/wasm
 
 # =============================================================================
 # Development
@@ -91,21 +131,24 @@ fmt:
 lint:
     cargo clippy -- -D warnings
 
-# Clean build artifacts
+# Clean all build artifacts
 clean:
     cargo clean
-    rm -rf platforms/browser/wasm
-    rm -rf platforms/browser/dist
-    rm -rf platforms/browser/examples/quick-start/node_modules
+    rm -rf platforms/browser/lib/wasm
+    rm -rf platforms/browser/lib/dist
+    rm -rf platforms/browser/app/dist
+    rm -rf platforms/browser/node_modules
+    rm -rf platforms/browser/lib/node_modules
+    rm -rf platforms/browser/app/node_modules
 
 # =============================================================================
 # Full Workflows
 # =============================================================================
 
 # Setup everything for development
-setup: build browser-install quick-start-install
+setup: build-rust (install "browser")
     @echo "✅ Setup complete!"
 
 # Build everything for production
-all: build-release build-wasm-release browser-build
-    @echo "✅ Full build complete!"
+all AGENT_ID: build-rust-release build-wasm-release (build "browser" AGENT_ID)
+    @echo "✅ Full build complete for agent {{AGENT_ID}}!"

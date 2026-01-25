@@ -119,32 +119,31 @@ uhum-avatar/
 │
 ├── platforms/                 # Platform-specific code (non-Rust)
 │   ├── browser/               # TypeScript/React
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── src/
-│   │       ├── index.ts       # Main exports
-│   │       ├── avatar.ts      # AvatarClient class
-│   │       ├── types.ts       # TypeScript types
-│   │       ├── hooks/         # React hooks
-│   │       │   ├── useAvatar.tsx
-│   │       │   └── useAgent.ts
-│   │       └── components/    # Uhum View components
-│   │           ├── UhumView.tsx
-│   │           └── MessageDisplay.tsx
+│   │   ├── lib/               # Avatar library (internal)
+│   │   │   └── src/
+│   │   │       ├── index.ts       # Library exports
+│   │   │       ├── avatar.ts      # AvatarClient class
+│   │   │       ├── directory.ts   # Directory service client
+│   │   │       ├── protocol.ts    # Uhum protocol encoding
+│   │   │       ├── types.ts       # TypeScript types
+│   │   │       ├── hooks/         # React hooks
+│   │   │       └── components/    # Uhum View components
+│   │   │
+│   │   ├── app/               # Deployable Avatar app
+│   │   │   └── src/
+│   │   │       ├── main.tsx       # Entry point
+│   │   │       ├── App.tsx        # Root with directory resolution
+│   │   │       └── styles.css     # Global styles
+│   │   │
+│   │   ├── package.json       # Workspace root
+│   │   └── pnpm-workspace.yaml
 │   │
 │   ├── ios/                   # Swift/SwiftUI (future)
-│   │   ├── Package.swift
-│   │   └── Sources/
-│   │
 │   ├── android/               # Kotlin/Compose (future)
-│   │   ├── build.gradle.kts
-│   │   └── src/
-│   │
 │   └── desktop/               # Tauri app (future)
-│       ├── src-tauri/
-│       └── src/
 │
 └── specs/                     # Specifications
+    ├── BROWSER-DEPLOYMENT.md  # Browser deployment architecture
     ├── UHUM-VIEW.md
     ├── VIEW-INSTRUCTIONS.md
     ├── SMART-ROUTING.md
@@ -157,64 +156,103 @@ uhum-avatar/
 
 ### Architecture
 
+Each agent gets their own Avatar bundle with the **agent ID baked in at build time**. The Brain WebSocket URL is resolved at runtime from the **Directory Service**.
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    BROWSER (JavaScript)                          │
 │                                                                  │
-│   React/Vue/Svelte Components                                    │
-│              │                                                   │
-│              ▼                                                   │
+│   BUILD TIME (per agent):                                        │
+│   VITE_AGENT_ID=acme.billing pnpm build                         │
+│   → Bundle contains AGENT_ID, NOT Brain URL                      │
+│                                                                  │
+│   RUNTIME:                                                       │
+│   1. User visits acme.com                                        │
+│   2. CDN serves Acme's bundle                                    │
+│   3. Bundle calls Directory: GET /resolve?agentId=acme.billing   │
+│   4. Directory returns: { wsUrl: "wss://brain.acme.com" }        │
+│   5. Bundle connects to Brain via WebSocket                      │
+│                                                                  │
 │   ┌─────────────────────────────────────────────────────┐       │
-│   │         @uhum/avatar (TypeScript package)            │       │
-│   │                                                      │       │
+│   │              Avatar App                              │       │
+│   │   • DirectoryClient — resolve agent ID → Brain URL   │       │
 │   │   • AvatarClient — state management, connection      │       │
 │   │   • useAvatar — React hook for state                 │       │
-│   │   • useAgent — React hook for agent connection       │       │
 │   │   • UhumView — main container component              │       │
 │   └─────────────────────────────────────────────────────┘       │
 │              │                                                   │
 │              ▼ (optional WASM for performance)                   │
 │   ┌─────────────────────────────────────────────────────┐       │
 │   │              ua-wasm (Rust → WASM)                   │       │
-│   │                                                      │       │
-│   │   • BrowserScheduler — setTimeout/clearTimeout       │       │
-│   │   • BrowserEffectExecutor — DOM APIs                 │       │
-│   │   • BrowserTransport — WebSocket API                 │       │
+│   │   • BrowserScheduler, BrowserEffectExecutor          │       │
+│   │   • BrowserTransport (WebSocket API)                 │       │
 │   └─────────────────────────────────────────────────────┘       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### TypeScript Package (`@uhum/avatar`)
+> **Full specification:** See [BROWSER-DEPLOYMENT.md](./BROWSER-DEPLOYMENT.md)
 
-#### Installation
+### Deployment Model
+
+| What | When | Where |
+|------|------|-------|
+| Agent ID | Build time | Baked into bundle (`VITE_AGENT_ID`) |
+| Brain URL | Runtime | Directory Service |
+| Domain routing | CDN edge | Routes domain → agent bundle |
+
+### Development
 
 ```bash
-npm install @uhum/avatar
+cd platforms/browser
+
+# Install dependencies
+pnpm install
+
+# Development (mock mode - no agent ID needed)
+pnpm dev:mock
+
+# Development with specific agent
+VITE_AGENT_ID=acme.billing pnpm dev
+
+# Production build
+VITE_AGENT_ID=acme.billing pnpm build
 ```
 
-#### Basic Usage
+### Directory Service
+
+The Directory Service resolves agent IDs to Brain connection info:
+
+```
+GET /resolve?agentId=acme.billing
+
+Response:
+{
+  "wsUrl": "wss://brain.acme.com",
+  "dossier": { ... }
+}
+```
+
+### Library Usage (Internal)
 
 ```typescript
-import { AvatarClient } from '@uhum/avatar';
+import { AvatarClient, DirectoryClient } from '@uhum/avatar-lib';
 
+// Resolve Brain URL from Directory
+const directory = new DirectoryClient();
+const { wsUrl } = await directory.resolve('acme.billing');
+
+// Connect to Brain
 const avatar = new AvatarClient({ debug: true });
+await avatar.connect(wsUrl, 'acme.billing');
 
-// Subscribe to state changes
-avatar.subscribe((state) => {
-  console.log('State:', state);
-});
-
-// Connect to an agent
-await avatar.connect('wss://brain.example.com/acme.billing');
-
-// Send an intention
+// Send intention
 avatar.sendIntention('pay_invoice', { invoice_id: 'INV-123' });
 ```
 
-#### React Usage
+### React Usage
 
 ```tsx
-import { AvatarProvider, useAvatar, useAgent, UhumView } from '@uhum/avatar';
+import { AvatarProvider, useAvatar, UhumView } from '@uhum/avatar-lib';
 
 function App() {
   return (
@@ -227,20 +265,17 @@ function App() {
 }
 
 function InvoiceApp() {
-  const { state } = useAvatar();
-  const { connected, sendIntention } = useAgent('wss://brain.example.com/acme.billing', {
-    autoConnect: true,
-  });
-
-  if (!connected) return <div>Connecting...</div>;
+  const { state, client } = useAvatar();
 
   return (
     <div>
       <h1>Invoices</h1>
       {state.facts.map((fact) => (
-        <InvoiceCard key={fact.id} invoice={fact} onPay={() => {
-          sendIntention('pay_invoice', { invoice_id: fact.id });
-        }} />
+        <InvoiceCard 
+          key={fact.id} 
+          invoice={fact} 
+          onPay={() => client.sendIntention('pay_invoice', { invoice_id: fact.id })} 
+        />
       ))}
     </div>
   );
@@ -261,7 +296,7 @@ Build WASM:
 
 ```bash
 cd crates/ua-wasm
-wasm-pack build --target web --out-dir ../../platforms/browser/wasm
+wasm-pack build --target web --out-dir ../../platforms/browser/lib/wasm
 ```
 
 ---
@@ -429,18 +464,22 @@ Pure Rust desktop app:
 ### Browser
 
 ```bash
-# Install dependencies
 cd platforms/browser
-npm install
 
-# Build TypeScript
-npm run build
+# Install dependencies
+pnpm install
+
+# Development (mock mode)
+pnpm dev:mock
+
+# Build for production (requires agent ID)
+VITE_AGENT_ID=acme.billing pnpm build
 
 # Build WASM (optional, for performance)
-npm run build:wasm
+pnpm build:wasm
 
 # Run tests
-npm test
+pnpm test
 ```
 
 ### Rust Crates
