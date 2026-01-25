@@ -588,6 +588,7 @@ dependencies = [
 name = "ua-view"
 version = "0.1.0"
 dependencies = [
+ "parking_lot",
  "thiserror",
  "tracing",
  "ua-agent",
