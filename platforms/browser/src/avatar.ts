@@ -2,7 +2,7 @@
  * Avatar Client - Main entry point for browser applications.
  *
  * The AvatarClient manages:
- * - WebSocket connection to the Brain
+ * - WebSocket connection to the Brain (using UHUM protocol)
  * - State management (reactive, event-driven)
  * - View instruction processing
  * - Scheduled effects (timers)
@@ -11,11 +11,24 @@
 import {
   AvatarState,
   Action,
-  ConnectionState,
   ViewInstruction,
   createInitialState,
   avatarReducer,
 } from './types';
+import {
+  parseMessage,
+  buildJoinMessage,
+  buildIntentionMessage,
+  buildTextMessage,
+  buildLeaveMessage,
+  buildAckMessage,
+  extractDecisionFacts,
+  extractViewInstructions,
+  extractMemoryEvents,
+  termToObject,
+  UhumMessage,
+  Term,
+} from './protocol';
 
 /**
  * Options for creating an AvatarClient.
@@ -25,6 +38,8 @@ export interface AvatarClientOptions {
   initialRoute?: string;
   /** Enable debug logging */
   debug?: boolean;
+  /** Session ID (defaults to random) */
+  sessionId?: string;
 }
 
 /**
@@ -57,7 +72,7 @@ interface ScheduledEffect {
  * });
  *
  * // Connect to an agent
- * await avatar.connect('wss://brain.example.com/acme.billing');
+ * await avatar.connect('ws://localhost:8080', 'demo.agent');
  *
  * // Send an intention
  * avatar.sendIntention('pay_invoice', { invoice_id: 'INV-123' });
@@ -69,10 +84,14 @@ export class AvatarClient {
   private scheduledEffects: Map<string, ScheduledEffect> = new Map();
   private socket: WebSocket | null = null;
   private options: AvatarClientOptions;
+  private sessionId: string;
+  private agentAddress: string = '';
+  private lastCursor: number = 0;
 
   constructor(options: AvatarClientOptions = {}) {
     this.options = options;
     this.state = createInitialState();
+    this.sessionId = options.sessionId || `ses_${Date.now().toString(36)}`;
 
     if (options.initialRoute) {
       this.state.currentRoute = options.initialRoute;
@@ -136,19 +155,32 @@ export class AvatarClient {
   }
 
   /**
-   * Connect to an Agent via WebSocket.
+   * Connect to an Agent via WebSocket using UHUM protocol.
+   *
+   * @param url - WebSocket URL (e.g., 'ws://localhost:8080')
+   * @param agentAddress - Agent address (e.g., 'demo.agent')
    */
-  async connect(url: string): Promise<void> {
+  async connect(url: string, agentAddress?: string): Promise<void> {
+    // Extract agent address from URL if not provided
+    this.agentAddress = agentAddress || this.extractAgentAddress(url);
+
     return new Promise((resolve, reject) => {
       this.dispatch({ type: 'SET_CONNECTION_STATE', state: 'connecting' });
 
       this.socket = new WebSocket(url);
 
       this.socket.onopen = () => {
-        this.log('WebSocket connected');
-        this.dispatch({ type: 'SET_CONNECTION_STATE', state: 'connected' });
-        this.dispatch({ type: 'SET_CONNECTED', connected: true, agentId: url });
-        resolve();
+        this.log('WebSocket connected, sending JOIN');
+
+        // Send JOIN message using UHUM protocol
+        const joinMsg = buildJoinMessage({
+          avatarId: this.sessionId,
+          agentAddress: this.agentAddress,
+          capabilities: ['memory_sync', 'intentions'],
+        });
+
+        this.log('Sending JOIN:', joinMsg);
+        this.socket!.send(joinMsg);
       };
 
       this.socket.onclose = () => {
@@ -163,7 +195,7 @@ export class AvatarClient {
       };
 
       this.socket.onmessage = (event) => {
-        this.handleMessage(event.data);
+        this.handleMessage(event.data, resolve, reject);
       };
     });
   }
@@ -172,8 +204,15 @@ export class AvatarClient {
    * Disconnect from the Agent.
    */
   disconnect(): void {
-    if (this.socket) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      // Send LEAVE message
+      const leaveMsg = buildLeaveMessage(this.sessionId, this.agentAddress);
+      this.socket.send(leaveMsg);
+
       this.dispatch({ type: 'SET_CONNECTION_STATE', state: 'closing' });
+    }
+
+    if (this.socket) {
       this.socket.close();
       this.socket = null;
     }
@@ -188,18 +227,19 @@ export class AvatarClient {
       return;
     }
 
-    const message = {
-      type: 'INTENTION',
+    const intentionMsg = buildIntentionMessage({
+      avatarId: this.sessionId,
+      agentAddress: this.agentAddress,
       intent,
       params,
-    };
+    });
 
-    this.socket.send(JSON.stringify(message));
-    this.log('Sent intention:', message);
+    this.log('Sending INTENTION:', intentionMsg);
+    this.socket.send(intentionMsg);
   }
 
   /**
-   * Send a text message to the Agent.
+   * Send a text message to the Agent (for NLU processing).
    */
   sendMessage(text: string): void {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
@@ -207,23 +247,104 @@ export class AvatarClient {
       return;
     }
 
-    const message = {
-      type: 'MESSAGE',
+    const textMsg = buildTextMessage({
+      avatarId: this.sessionId,
+      agentAddress: this.agentAddress,
       text,
-    };
+    });
 
-    this.socket.send(JSON.stringify(message));
-    this.log('Sent message:', message);
+    this.log('Sending MESSAGE:', textMsg);
+    this.socket.send(textMsg);
   }
 
   // === Private methods ===
 
-  private handleMessage(data: string): void {
+  private extractAgentAddress(url: string): string {
+    // Try to extract from URL path, fallback to 'demo.agent'
     try {
-      const message = JSON.parse(data);
-      this.log('Received message:', message);
+      const parsed = new URL(url);
+      const path = parsed.pathname.slice(1); // Remove leading /
+      return path || 'demo.agent';
+    } catch {
+      return 'demo.agent';
+    }
+  }
+
+  private handleMessage(
+    data: string,
+    resolveConnect?: () => void,
+    rejectConnect?: (error: Error) => void
+  ): void {
+    try {
+      this.log('Received raw message:', data);
+
+      const message = parseMessage(data);
+      this.log('Parsed message:', message.type, message);
 
       switch (message.type) {
+        case 'welcome':
+          this.handleWelcome(message);
+          if (resolveConnect) {
+            this.dispatch({ type: 'SET_CONNECTION_STATE', state: 'connected' });
+            this.dispatch({
+              type: 'SET_CONNECTED',
+              connected: true,
+              agentId: this.agentAddress,
+            });
+            resolveConnect();
+          }
+          break;
+
+        case 'decision':
+          this.handleDecision(message);
+          break;
+
+        case 'memory':
+          this.handleMemory(message);
+          break;
+
+        case 'error':
+          this.handleError(message);
+          if (rejectConnect) {
+            rejectConnect(new Error('Connection rejected'));
+          }
+          break;
+
+        case 'pong':
+          // Keep-alive response, ignore
+          break;
+
+        default:
+          this.log('Unhandled message type:', message.type);
+      }
+    } catch (error) {
+      this.log('Failed to parse message:', error, 'Raw:', data);
+
+      // Try to handle as JSON for backward compatibility with mock server
+      this.handleLegacyJsonMessage(data, resolveConnect, rejectConnect);
+    }
+  }
+
+  private handleLegacyJsonMessage(
+    data: string,
+    resolveConnect?: () => void,
+    rejectConnect?: (error: Error) => void
+  ): void {
+    try {
+      const message = JSON.parse(data);
+      this.log('Handling legacy JSON message:', message);
+
+      switch (message.type) {
+        case 'WELCOME':
+          this.dispatch({ type: 'SET_CONNECTION_STATE', state: 'connected' });
+          this.dispatch({
+            type: 'SET_CONNECTED',
+            connected: true,
+            agentId: this.agentAddress,
+          });
+          if (resolveConnect) resolveConnect();
+          break;
+
         case 'DECISION':
           if (message.facts) {
             this.dispatch({ type: 'UPDATE_FACTS', facts: message.facts });
@@ -245,14 +366,180 @@ export class AvatarClient {
             text: message.message || 'An error occurred',
             messageType: 'error',
           });
+          if (rejectConnect) rejectConnect(new Error(message.message));
+          break;
+      }
+    } catch {
+      this.log('Message is neither UHUM nor JSON, ignoring');
+    }
+  }
+
+  private handleWelcome(message: UhumMessage): void {
+    this.log('Received WELCOME:', message);
+
+    // Extract cursor from welcome message
+    if (message.cursor !== undefined) {
+      this.lastCursor = message.cursor;
+    }
+
+    // Extract agent info from body if available
+    if (message.body?.type === 'compound' && message.body.functor === 'welcome') {
+      const data = message.body.args[0];
+      if (data?.type === 'list') {
+        // Parse welcome data (agent info, intents, etc.)
+        this.log('Welcome data:', data.items.map(termToObject));
+      }
+    }
+  }
+
+  private handleDecision(message: UhumMessage): void {
+    this.log('Received DECISION:', message);
+
+    if (!message.body) return;
+
+    // Extract facts
+    const facts = extractDecisionFacts(message.body);
+    if (facts.length > 0) {
+      const factsAsObjects = facts.map(termToObject);
+      this.log('Decision facts:', factsAsObjects);
+      this.dispatch({ type: 'UPDATE_FACTS', facts: factsAsObjects });
+    }
+
+    // Extract view instructions
+    const instructions = extractViewInstructions(message.body);
+    if (instructions.length > 0) {
+      const viewInstructions = this.termInstructionsToViewInstructions(instructions);
+      this.log('View instructions:', viewInstructions);
+      this.processInstructions(viewInstructions);
+    }
+
+    // Check for simple decision status
+    if (message.body.type === 'compound' && message.body.functor === 'decision') {
+      const status = message.body.args[0];
+      if (status?.type === 'atom') {
+        if (status.value === 'accepted') {
+          this.dispatch({
+            type: 'SHOW_MESSAGE',
+            text: 'Request processed successfully',
+            messageType: 'success',
+          });
+        } else if (status.value === 'rejected') {
+          const reason = message.body.args[2];
+          const reasonText = reason?.type === 'string' ? reason.value : 'Request rejected';
+          this.dispatch({
+            type: 'SHOW_MESSAGE',
+            text: reasonText,
+            messageType: 'error',
+          });
+        }
+      }
+    }
+  }
+
+  private handleMemory(message: UhumMessage): void {
+    this.log('Received MEMORY:', message);
+
+    // Update cursor
+    if (message.cursorEnd !== undefined) {
+      this.lastCursor = message.cursorEnd;
+
+      // Send ACK
+      const ackMsg = buildAckMessage(this.sessionId, this.agentAddress, this.lastCursor);
+      this.socket?.send(ackMsg);
+    }
+
+    if (!message.body) return;
+
+    // Extract events
+    const events = extractMemoryEvents(message.body);
+    if (events.length > 0) {
+      const eventsAsObjects = events.map(termToObject);
+      this.log('Memory events:', eventsAsObjects);
+      this.dispatch({ type: 'UPDATE_FACTS', facts: eventsAsObjects });
+    }
+  }
+
+  private handleError(message: UhumMessage): void {
+    this.log('Received ERROR:', message);
+
+    let errorText = 'An error occurred';
+    if (message.body?.type === 'compound' && message.body.functor === 'error') {
+      const msgArg = message.body.args[0];
+      if (msgArg?.type === 'string') {
+        errorText = msgArg.value;
+      }
+    }
+
+    this.dispatch({
+      type: 'SHOW_MESSAGE',
+      text: errorText,
+      messageType: 'error',
+    });
+  }
+
+  private termInstructionsToViewInstructions(terms: Term[]): ViewInstruction[] {
+    return terms.map((term) => {
+      if (term.type !== 'compound') {
+        return { type: 'unknown' };
+      }
+
+      const instruction: ViewInstruction = { type: term.functor };
+
+      // Parse common instruction patterns
+      switch (term.functor) {
+        case 'message':
+          // message(Type, Text) or message(Type, Text, duration(Ms))
+          instruction.messageType = term.args[0]?.type === 'atom' ? term.args[0].value : 'info';
+          instruction.text = term.args[1]?.type === 'string' ? term.args[1].value : '';
+          if (term.args[2]?.type === 'compound' && term.args[2].functor === 'duration') {
+            instruction.duration = term.args[2].args[0]?.type === 'number'
+              ? term.args[2].args[0].value
+              : undefined;
+          }
           break;
 
-        default:
-          this.log('Unknown message type:', message.type);
+        case 'navigate':
+          instruction.route = term.args[0]?.type === 'atom' ? term.args[0].value : '';
+          break;
+
+        case 'highlight':
+          instruction.elementRef = term.args[0]?.type === 'string' ? term.args[0].value : '';
+          if (term.args[1]?.type === 'compound' && term.args[1].functor === 'duration') {
+            instruction.duration = term.args[1].args[0]?.type === 'number'
+              ? term.args[1].args[0].value
+              : undefined;
+          }
+          break;
+
+        case 'scroll_to':
+          instruction.elementRef = term.args[0]?.type === 'string' ? term.args[0].value : '';
+          break;
+
+        case 'focus':
+          instruction.elementRef = term.args[0]?.type === 'string' ? term.args[0].value : '';
+          break;
+
+        case 'loading':
+          instruction.show = term.args[0]?.type === 'atom' ? term.args[0].value === 'true' : true;
+          instruction.message = term.args[1]?.type === 'string' ? term.args[1].value : '';
+          break;
+
+        case 'modal':
+          instruction.name = term.args[0]?.type === 'atom' ? term.args[0].value : '';
+          instruction.data = term.args[1] ? termToObject(term.args[1]) : undefined;
+          break;
+
+        case 'close_modal':
+          // No additional args
+          break;
+
+        case 'go_back':
+          // No additional args
+          break;
       }
-    } catch (error) {
-      this.log('Failed to parse message:', error);
-    }
+
+      return instruction;
+    });
   }
 
   private instructionToAction(

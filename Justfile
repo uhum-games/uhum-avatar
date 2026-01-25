@@ -48,26 +48,26 @@ test-wasm:
 
 # Install browser package dependencies
 browser-install:
-    cd platforms/browser && npm install
+    cd platforms/browser && pnpm install
 
 # Build browser TypeScript package
 browser-build:
-    cd platforms/browser && npm run build
+    cd platforms/browser && pnpm run build
 
 # =============================================================================
-# Demo App
+# Example App
 # =============================================================================
 
-# Install demo dependencies
-demo-install:
-    cd platforms/browser/examples/demo && npm install
+# Install example app dependencies
+example-install:
+    cd platforms/browser/examples/demo && pnpm install
 
-# Run the demo app (dev server)
-demo-dev:
-    cd platforms/browser/examples/demo && npm run dev
+# Run the example app (dev server)
+example-dev:
+    cd platforms/browser/examples/demo && pnpm run dev
 
-# Run the mock Brain server
-demo-server:
+# Run the mock Brain server for example app
+example-server:
     cd platforms/browser/examples/demo && node mock-server.js
 
 # =============================================================================
@@ -98,7 +98,7 @@ clean:
 # =============================================================================
 
 # Setup everything for development
-setup: build browser-install demo-install
+setup: build browser-install example-install
     @echo "✅ Setup complete!"
 
 # Build everything for production

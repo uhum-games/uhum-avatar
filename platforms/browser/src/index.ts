@@ -43,6 +43,23 @@ export { useAgent, type UseAgentResult } from './hooks/useAgent';
 export { UhumView } from './components/UhumView';
 export { MessageDisplay } from './components/MessageDisplay';
 
+// Protocol (UHUM frame encoding/decoding)
+export {
+  Term,
+  termToString,
+  parseTerm,
+  encodeFrame,
+  decodeFrame,
+  parseMessage,
+  buildJoinMessage,
+  buildIntentionMessage,
+  buildTextMessage,
+  buildLeaveMessage,
+  type UhumFrame,
+  type UhumMessage,
+  type MessageType as ProtocolMessageType,
+} from './protocol';
+
 // WASM utilities
 export {
   loadWasm,

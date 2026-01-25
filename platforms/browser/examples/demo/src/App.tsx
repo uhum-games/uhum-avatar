@@ -36,16 +36,16 @@ function InvoiceApp() {
   const { state, client } = useAvatar();
   const [error, setError] = useState<string | null>(null);
 
-  // Connect to mock server on mount
+  // Connect to Brain on mount
   useEffect(() => {
     const connect = async () => {
       try {
-        // Try to connect to the mock WebSocket server
-        // In development, this proxies through Vite to localhost:8080
-        await client.connect('ws://localhost:8080');
+        // Connect to the Brain using UHUM protocol
+        // The second argument is the agent address
+        await client.connect('ws://localhost:8080', 'demo.agent');
       } catch (err) {
-        console.log('Could not connect to mock server, using demo mode');
-        setError('Mock server not running. Using demo mode with sample data.');
+        console.log('Could not connect to Brain, using demo mode');
+        setError('Brain not running. Using demo mode with sample data.');
 
         // Load sample data for demo
         client.dispatch({

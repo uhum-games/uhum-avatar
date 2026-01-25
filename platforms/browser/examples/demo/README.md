@@ -1,6 +1,6 @@
-# Uhum Avatar Demo - Invoice App
+# Uhum Avatar Example App - Invoice App
 
-A demo application showcasing the Uhum Avatar client library.
+An example application showcasing the Uhum Avatar client library.
 
 ## Features
 
@@ -16,13 +16,13 @@ A demo application showcasing the Uhum Avatar client library.
 
 ```bash
 cd platforms/browser/examples/demo
-npm install
+pnpm install
 ```
 
 ### 2. Start the Mock Server
 
 ```bash
-npm run mock-server
+pnpm run mock-server
 ```
 
 This starts a WebSocket server at `ws://localhost:8080` that simulates a Brain agent.
@@ -32,14 +32,14 @@ This starts a WebSocket server at `ws://localhost:8080` that simulates a Brain a
 In a new terminal:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 Open http://localhost:3000 in your browser.
 
-## Demo Mode
+## Offline Mode
 
-If the mock server isn't running, the app runs in "demo mode" with sample data. You can still:
+If the Brain isn't running, the app runs in "offline mode" with sample data. You can still:
 
 - View invoices
 - Click "Pay Now" to simulate payment
@@ -52,7 +52,7 @@ If the mock server isn't running, the app runs in "demo mode" with sample data. 
 │                         Browser                                  │
 │                                                                  │
 │   ┌─────────────────────────────────────────────────────┐       │
-│   │                    Demo App                          │       │
+│   │                   Example App                        │       │
 │   │   (React + Vite)                                     │       │
 │   │                                                      │       │
 │   │   • App.tsx — Main component                         │       │

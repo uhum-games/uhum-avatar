@@ -90,7 +90,7 @@ These are compiled directly into Avatar — one source of truth.
 
 - [Rust](https://rustup.rs/) (latest stable)
 - [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/) (for browser WASM)
-- [Node.js](https://nodejs.org/) (for browser TypeScript)
+- [Node.js](https://nodejs.org/) + [pnpm](https://pnpm.io/) (for browser TypeScript)
 - [just](https://github.com/casey/just) (optional, for build commands)
 
 ### Quick Start
@@ -124,8 +124,8 @@ wasm-pack build --target web --out-dir ../../platforms/browser/wasm
 
 # Build TypeScript package
 cd platforms/browser
-npm install
-npm run build
+pnpm install
+pnpm run build
 ```
 
 ### Available Just Commands
@@ -136,26 +136,24 @@ npm run build
 | `just test` | Run all tests |
 | `just build-wasm` | Build WASM for browser |
 | `just browser-build` | Build TypeScript package |
-| `just demo-dev` | Run demo app (localhost:3000) |
-| `just demo-server` | Run mock Brain server |
+| `just example-dev` | Run example app (localhost:3000) |
+| `just example-server` | Run mock Brain server |
 | `just setup` | Install all dependencies |
 | `just all` | Full production build |
 
-## Demo App
+## Example App
 
-A demo invoice application showcasing the Avatar:
+An example invoice application showcasing the Avatar:
 
 ```bash
-# Terminal 1: Start mock Brain server
-just demo-server
+# Terminal 1: Start the Brain (from uhum-brain)
+just dev
 
-# Terminal 2: Start dev server
-just demo-dev
+# Terminal 2: Start the Avatar example app
+just example-dev
 ```
 
 Open http://localhost:3000
-
-![Demo Screenshot](docs/demo-screenshot.png)
 
 Features:
 - 📋 Invoice management
