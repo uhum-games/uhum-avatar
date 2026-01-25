@@ -115,7 +115,7 @@ heaptrack.*
 /docs/book/
 
 ####################################
-# Node (if you have tooling around Rust)
+# Node / JavaScript / TypeScript
 ####################################
 
 node_modules/
@@ -123,6 +123,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Build outputs
+dist/
+**/dist/
+*.tsbuildinfo
 
 ####################################
 # Python (if you generate tools/scripts)

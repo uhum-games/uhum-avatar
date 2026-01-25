@@ -1,13 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AvatarProvider,
-  useAvatar,
-  UhumView,
   DirectoryClient,
   createMockDirectory,
   DirectoryError,
   type AgentInfo,
 } from '@uhum/avatar-lib';
+import { AvatarApp, ErrorScreen, LoadingScreen } from './components';
 
 /**
  * Uhum Avatar Application
@@ -100,7 +99,6 @@ function App() {
         error={resolution.error}
         onRetry={() => {
           setResolution({ status: 'resolving' });
-          // Trigger re-resolve via useEffect
           window.location.reload();
         }}
       />
@@ -109,247 +107,8 @@ function App() {
 
   return (
     <AvatarProvider options={{ debug: DEBUG }}>
-      <AvatarApp agentId={EFFECTIVE_AGENT_ID} agentInfo={resolution.agentInfo} />
+      <AvatarApp agentId={EFFECTIVE_AGENT_ID} agentInfo={resolution.agentInfo} debug={DEBUG} />
     </AvatarProvider>
-  );
-}
-
-/**
- * Main Avatar application component.
- * Connects to the resolved agent and renders the Uhum View.
- */
-function AvatarApp({ agentId, agentInfo }: { agentId: string; agentInfo: AgentInfo }) {
-  const { state, client } = useAvatar();
-
-  // Connect to agent on mount
-  useEffect(() => {
-    if (DEBUG) {
-      console.log(`[Avatar] Connecting to ${agentInfo.wsUrl} as ${agentId}`);
-    }
-
-    // Start connection - don't await, let reconnection logic handle failures
-    client.connect(agentInfo.wsUrl, agentId).then(() => {
-      if (DEBUG) {
-        console.log(`[Avatar] Connected to uhum://${agentId}`);
-      }
-    }).catch((error) => {
-      // Log but don't show error screen - reconnection will handle it
-      if (DEBUG) {
-        console.log('[Avatar] Initial connection failed, reconnection will retry:', error);
-      }
-    });
-
-    return () => {
-      client.disconnect();
-    };
-  }, [client, agentId, agentInfo]);
-
-  const handleSendMessage = useCallback(
-    (text: string) => {
-      if (state.connected) {
-        client.sendMessage(text);
-      }
-    },
-    [client, state.connected]
-  );
-
-  // Only show error screen when reconnection has given up
-  if (state.connectionState === 'failed') {
-    return (
-      <ErrorScreen
-        error={new Error('Unable to connect to agent after multiple attempts')}
-        onRetry={() => {
-          client.connect(agentInfo.wsUrl, agentId);
-        }}
-      />
-    );
-  }
-
-  return (
-    <UhumView className="avatar-app">
-      <Header agentId={agentId} agentInfo={agentInfo} connectionState={state.connectionState} />
-      <main className="avatar-main">
-        <ContentArea state={state} />
-      </main>
-      <ChatInput onSend={handleSendMessage} disabled={!state.connected} />
-    </UhumView>
-  );
-}
-
-/**
- * Header component showing agent info and connection status.
- */
-function Header({
-  agentId,
-  agentInfo,
-  connectionState,
-}: {
-  agentId: string;
-  agentInfo: AgentInfo;
-  connectionState: string;
-}) {
-  const agentName = agentInfo.dossier?.presentation?.brand?.name || agentId;
-
-  const getStatusLabel = () => {
-    switch (connectionState) {
-      case 'connected':
-        return 'Connected';
-      case 'connecting':
-        return 'Connecting...';
-      case 'reconnecting':
-        return 'Reconnecting...';
-      case 'disconnected':
-        return 'Disconnected';
-      case 'failed':
-        return 'Connection failed';
-      case 'closing':
-        return 'Closing...';
-      default:
-        return connectionState;
-    }
-  };
-
-  return (
-    <header className="avatar-header">
-      <div className="avatar-header-brand">
-        {agentInfo.dossier?.presentation?.brand?.logo && (
-          <img
-            src={agentInfo.dossier.presentation.brand.logo}
-            alt={agentName}
-            className="avatar-header-logo"
-          />
-        )}
-        <h1 className="avatar-header-title">{agentName}</h1>
-      </div>
-      <div className="avatar-header-status">
-        <span
-          className={`status-indicator status-${connectionState}`}
-          title={getStatusLabel()}
-        />
-        {(connectionState === 'reconnecting' || connectionState === 'connecting') && (
-          <span className="status-text">{getStatusLabel()}</span>
-        )}
-      </div>
-    </header>
-  );
-}
-
-/**
- * Main content area that renders based on state.
- */
-function ContentArea({ state }: { state: ReturnType<typeof useAvatar>['state'] }) {
-  // Show loading overlay
-  if (state.loading) {
-    return (
-      <div className="avatar-loading-overlay">
-        <div className="avatar-loading-spinner" />
-        <p>{state.loading.message || 'Loading...'}</p>
-      </div>
-    );
-  }
-
-  // Show message if present
-  if (state.message) {
-    return (
-      <div className={`avatar-message avatar-message-${state.message.messageType}`}>
-        {state.message.text}
-      </div>
-    );
-  }
-
-  // Show facts/data
-  if (state.facts.length > 0) {
-    return (
-      <div className="avatar-content">
-        <pre className="avatar-facts">{JSON.stringify(state.facts, null, 2)}</pre>
-      </div>
-    );
-  }
-
-  // Empty state
-  return (
-    <div className="avatar-empty">
-      <p>Send a message to get started</p>
-    </div>
-  );
-}
-
-/**
- * Chat input component.
- */
-function ChatInput({
-  onSend,
-  disabled,
-}: {
-  onSend: (text: string) => void;
-  disabled: boolean;
-}) {
-  const [text, setText] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (text.trim() && !disabled) {
-      onSend(text.trim());
-      setText('');
-    }
-  };
-
-  return (
-    <form className="avatar-chat-input" onSubmit={handleSubmit}>
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={disabled ? 'Connecting...' : 'Type a message...'}
-        disabled={disabled}
-        className="avatar-chat-field"
-      />
-      <button type="submit" disabled={disabled || !text.trim()} className="avatar-chat-send">
-        Send
-      </button>
-    </form>
-  );
-}
-
-/**
- * Loading screen shown during agent resolution.
- */
-function LoadingScreen({ message }: { message: string }) {
-  return (
-    <div className="avatar-screen avatar-loading-screen">
-      <div className="avatar-loading-spinner" />
-      <p>{message}</p>
-    </div>
-  );
-}
-
-/**
- * Error screen shown when resolution or connection fails.
- */
-function ErrorScreen({
-  error,
-  onRetry,
-}: {
-  error: DirectoryError | Error;
-  onRetry: () => void;
-}) {
-  const isNotFound = error instanceof DirectoryError && error.code === 'NOT_FOUND';
-
-  return (
-    <div className="avatar-screen avatar-error-screen">
-      <div className="avatar-error-icon">⚠️</div>
-      <h2>{isNotFound ? 'Agent Not Found' : 'Connection Error'}</h2>
-      <p className="avatar-error-message">
-        {isNotFound
-          ? `No agent is registered for this domain.`
-          : error.message || 'An unexpected error occurred'}
-      </p>
-      {!isNotFound && (
-        <button onClick={onRetry} className="avatar-retry-button">
-          Try Again
-        </button>
-      )}
-    </div>
   );
 }
 

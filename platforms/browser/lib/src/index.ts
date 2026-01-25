@@ -33,6 +33,20 @@ export type {
   Modal,
   LoadingState,
   ConnectionState,
+  ConnectionStep,
+  AgentDossier,
+  DossierIdentity,
+  DossierIntent,
+  DossierParam,
+  DossierPresentation,
+  DossierBrand,
+  DossierHomeSection,
+  DossierView,
+  DossierViewType,
+  DossierViewColumn,
+  DossierViewAction,
+  DossierViewFilter,
+  DossierLayoutHint,
 } from './types';
 
 // React hooks
@@ -42,6 +56,12 @@ export { useAgent, type UseAgentResult } from './hooks/useAgent';
 // Components (re-export for convenience)
 export { UhumView } from './components/UhumView';
 export { MessageDisplay } from './components/MessageDisplay';
+export {
+  SmartChat,
+  type SmartChatProps,
+  type DockPosition,
+  type Corner,
+} from './components/SmartChat';
 
 // Protocol (Uhum frame encoding/decoding)
 export {
@@ -75,6 +95,6 @@ export {
   DirectoryError,
   type DirectoryClientOptions,
   type AgentInfo,
-  type AgentDossier,
-  type AgentIntent,
+  type AgentDossier as DirectoryAgentDossier,
+  type AgentIntent as DirectoryAgentIntent,
 } from './directory';

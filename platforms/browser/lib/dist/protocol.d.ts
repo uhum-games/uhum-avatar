@@ -124,4 +124,21 @@ export declare function extractMemoryEvents(body: Term): Term[];
  * Convert Term to a plain JavaScript object for easier use in UI.
  */
 export declare function termToObject(term: Term): unknown;
+import type { AgentDossier } from './types';
+/**
+ * Extract dossier from a WELCOME message body.
+ *
+ * Body format:
+ * welcome([
+ *   agent(id, version),
+ *   resume(token),
+ *   cursor(0),
+ *   dossier([
+ *     identity([id(...), name(...), ...]),
+ *     intents([intent(...), ...]),
+ *     presentation([...])
+ *   ])
+ * ])
+ */
+export declare function extractDossierFromWelcome(body: Term): AgentDossier | null;
 //# sourceMappingURL=protocol.d.ts.map

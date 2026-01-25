@@ -1,0 +1,389 @@
+/**
+ * SmartChat Component Styles
+ * 
+ * A versatile chat component with docking and smart floating modes.
+ * 
+ * CSS Custom Properties (configurable):
+ * - --smart-chat-bg: Background color
+ * - --smart-chat-header-bg: Header background color
+ * - --smart-chat-border: Border color
+ * - --smart-chat-text: Text color
+ * - --smart-chat-text-muted: Muted text color
+ * - --smart-chat-accent: Accent color for interactive elements
+ * - --smart-chat-shadow: Box shadow
+ * - --smart-chat-radius: Border radius
+ */
+
+/* === Base Variables === */
+.smart-chat {
+  --smart-chat-bg: var(--avatar-surface, #12121a);
+  --smart-chat-header-bg: var(--avatar-surface-elevated, #1a1a24);
+  --smart-chat-border: var(--avatar-border, #2a2a36);
+  --smart-chat-text: var(--avatar-text, #e4e4e7);
+  --smart-chat-text-muted: var(--avatar-text-muted, #71717a);
+  --smart-chat-accent: var(--avatar-primary, #6366f1);
+  --smart-chat-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --smart-chat-radius: 12px;
+  --smart-chat-header-height: 44px;
+  --smart-chat-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* === Base Styles === */
+.smart-chat {
+  display: flex;
+  flex-direction: column;
+  background: var(--smart-chat-bg);
+  border: 1px solid var(--smart-chat-border);
+  border-radius: var(--smart-chat-radius);
+  box-shadow: var(--smart-chat-shadow);
+  overflow: hidden;
+  font-family: var(--avatar-font-family, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
+  color: var(--smart-chat-text);
+  z-index: 1000;
+}
+
+/* === Header === */
+.smart-chat__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--smart-chat-header-height);
+  padding: 0 12px;
+  background: var(--smart-chat-header-bg);
+  border-bottom: 1px solid var(--smart-chat-border);
+  user-select: none;
+  position: relative;
+}
+
+.smart-chat__header-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.smart-chat__header-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--smart-chat-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.smart-chat__header-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.smart-chat__control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--smart-chat-text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.smart-chat__control-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--smart-chat-text);
+}
+
+.smart-chat__control-btn:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.smart-chat__control-btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Drag indicator (smart mode only) */
+.smart-chat__drag-indicator {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 3px;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+.smart-chat__drag-indicator span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--smart-chat-text-muted);
+}
+
+.smart-chat__header:hover .smart-chat__drag-indicator {
+  opacity: 0.7;
+}
+
+/* === Body === */
+.smart-chat__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* === DOCKED MODE === */
+.smart-chat--docked {
+  position: fixed;
+  border-radius: 0;
+}
+
+/* Docked: Bottom */
+.smart-chat--dock-bottom {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--smart-chat-docked-size, 350px);
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  border-radius: var(--smart-chat-radius) var(--smart-chat-radius) 0 0;
+}
+
+/* Docked: Top */
+.smart-chat--dock-top {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--smart-chat-docked-size, 350px);
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-radius: 0 0 var(--smart-chat-radius) var(--smart-chat-radius);
+}
+
+/* Docked: Left */
+.smart-chat--dock-left {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--smart-chat-docked-size, 350px);
+  border-left: none;
+  border-top: none;
+  border-bottom: none;
+  border-radius: 0 var(--smart-chat-radius) var(--smart-chat-radius) 0;
+}
+
+/* Docked: Right */
+.smart-chat--dock-right {
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--smart-chat-docked-size, 350px);
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
+  border-radius: var(--smart-chat-radius) 0 0 var(--smart-chat-radius);
+}
+
+/* === SMART MODE === */
+.smart-chat--smart {
+  position: fixed;
+  width: var(--smart-chat-width, 380px);
+  height: var(--smart-chat-height, 500px);
+  transform: translate(var(--smart-chat-x, 0), var(--smart-chat-y, 0));
+  top: 0;
+  left: 0;
+  /* Always animate transform and height changes (except when dragging) */
+  transition: transform var(--smart-chat-transition), height var(--smart-chat-transition);
+  will-change: transform, height;
+}
+
+/* Smart mode header cursor */
+.smart-chat--smart .smart-chat__header {
+  cursor: grab;
+}
+
+.smart-chat--smart.smart-chat--dragging .smart-chat__header {
+  cursor: grabbing;
+}
+
+/* === TRANSITIONS === */
+.smart-chat--transitioning {
+  transition: transform var(--smart-chat-transition);
+}
+
+/* Dragging state - no transition */
+.smart-chat--dragging {
+  transition: none !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* === MINIMIZED STATE === */
+.smart-chat--minimized .smart-chat__body {
+  display: none;
+}
+
+.smart-chat--minimized .smart-chat__header {
+  border-bottom: none;
+}
+
+/* Minimized in smart mode */
+.smart-chat--smart.smart-chat--minimized {
+  /* Height is set via CSS custom property for smooth animation */
+}
+
+/* === ANIMATIONS === */
+@keyframes smart-chat-slide-in-bottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes smart-chat-slide-in-top {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes smart-chat-slide-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes smart-chat-slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes smart-chat-float-in {
+  from {
+    transform: translate(var(--smart-chat-x, 0), var(--smart-chat-y, 0)) scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: translate(var(--smart-chat-x, 0), var(--smart-chat-y, 0)) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Entry animations (optional, add class 'smart-chat--animate-in') */
+.smart-chat--animate-in.smart-chat--dock-bottom {
+  animation: smart-chat-slide-in-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.smart-chat--animate-in.smart-chat--dock-top {
+  animation: smart-chat-slide-in-top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.smart-chat--animate-in.smart-chat--dock-left {
+  animation: smart-chat-slide-in-left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.smart-chat--animate-in.smart-chat--dock-right {
+  animation: smart-chat-slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.smart-chat--animate-in.smart-chat--smart {
+  animation: smart-chat-float-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .smart-chat--smart {
+    --smart-chat-width: calc(100vw - 32px);
+    --smart-chat-height: 60vh;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Force docked mode on very small screens */
+  .smart-chat--docked {
+    --smart-chat-docked-size: 50vh;
+  }
+
+  .smart-chat--smart {
+    --smart-chat-width: calc(100vw - 24px);
+    --smart-chat-height: 50vh;
+  }
+}
+
+/* === LIGHT THEME OVERRIDE === */
+@media (prefers-color-scheme: light) {
+  .smart-chat {
+    --smart-chat-bg: #ffffff;
+    --smart-chat-header-bg: #f9fafb;
+    --smart-chat-border: #e5e7eb;
+    --smart-chat-text: #111827;
+    --smart-chat-text-muted: #6b7280;
+    --smart-chat-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .smart-chat__control-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .smart-chat__control-btn:active {
+    background: rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* === FOCUS VISIBLE === */
+.smart-chat__control-btn:focus-visible {
+  outline: 2px solid var(--smart-chat-accent);
+  outline-offset: 2px;
+}
+
+/* === HIGH CONTRAST === */
+@media (prefers-contrast: high) {
+  .smart-chat {
+    border-width: 2px;
+  }
+
+  .smart-chat__control-btn:focus-visible {
+    outline-width: 3px;
+  }
+}
+
+/* === REDUCED MOTION === */
+@media (prefers-reduced-motion: reduce) {
+  .smart-chat,
+  .smart-chat--transitioning {
+    transition: none !important;
+  }
+
+  .smart-chat--animate-in {
+    animation: none !important;
+  }
+}

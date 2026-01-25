@@ -26,6 +26,7 @@ import {
   extractDecisionFacts,
   extractViewInstructions,
   extractMemoryEvents,
+  extractDossierFromWelcome,
   termToObject,
   UhumMessage,
   Term,
@@ -205,6 +206,9 @@ export class AvatarClient {
     this.isIntentionalDisconnect = false;
     this.shouldReconnect = true;
 
+    // Set initial connection step (locating is done by App before calling connect)
+    this.dispatch({ type: 'SET_CONNECTION_STEP', step: 'locating' });
+
     // Clear any pending reconnect
     this.clearReconnectTimeout();
 
@@ -216,7 +220,9 @@ export class AvatarClient {
    */
   private doConnect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      // Set connection state and step
       this.dispatch({ type: 'SET_CONNECTION_STATE', state: 'connecting' });
+      this.dispatch({ type: 'SET_CONNECTION_STEP', step: 'connecting' });
 
       this.socket = new WebSocket(this.wsUrl);
 
@@ -228,6 +234,9 @@ export class AvatarClient {
 
         // Reset reconnect attempts on successful connection
         this.reconnectAttempts = 0;
+
+        // Update step to greeting (waiting for WELCOME)
+        this.dispatch({ type: 'SET_CONNECTION_STEP', step: 'greeting' });
 
         // Send JOIN message using Uhum protocol
         const joinMsg = buildJoinMessage({
@@ -246,6 +255,11 @@ export class AvatarClient {
         this.log('WebSocket disconnected', { code: event.code, reason: event.reason, wasClean: event.wasClean });
         this.dispatch({ type: 'SET_CONNECTION_STATE', state: 'disconnected' });
         this.dispatch({ type: 'SET_CONNECTED', connected: false });
+        
+        // Reset step based on whether we have a dossier loaded
+        // If dossier is loaded, stay at 'ready', otherwise go to 'idle'
+        const hasDossier = this.state.dossier !== null;
+        this.dispatch({ type: 'SET_CONNECTION_STEP', step: hasDossier ? 'ready' : 'idle' });
 
         // Attempt reconnection if not intentional disconnect
         if (!this.isIntentionalDisconnect && this.shouldReconnect && this.reconnectOptions.enabled) {
@@ -343,6 +357,11 @@ export class AvatarClient {
 
     // Reset reconnection state
     this.reconnectAttempts = 0;
+
+    // Reset step based on whether we have dossier loaded
+    // Keeps dossier so UI can still show agent info while disconnected
+    const hasDossier = this.state.dossier !== null;
+    this.dispatch({ type: 'SET_CONNECTION_STEP', step: hasDossier ? 'ready' : 'idle' });
   }
 
   /**
@@ -522,19 +541,27 @@ export class AvatarClient {
   private handleWelcome(message: UhumMessage): void {
     this.log('Received WELCOME:', message);
 
+    // Update connection step - loading dossier
+    this.dispatch({ type: 'SET_CONNECTION_STEP', step: 'loading' });
+
     // Extract cursor from welcome message
     if (message.cursor !== undefined) {
       this.lastCursor = message.cursor;
     }
 
-    // Extract agent info from body if available
-    if (message.body?.type === 'compound' && message.body.functor === 'welcome') {
-      const data = message.body.args[0];
-      if (data?.type === 'list') {
-        // Parse welcome data (agent info, intents, etc.)
-        this.log('Welcome data:', data.items.map(termToObject));
+    // Extract dossier from body if available
+    if (message.body) {
+      const dossier = extractDossierFromWelcome(message.body);
+      if (dossier) {
+        this.log('Parsed dossier:', dossier);
+        this.dispatch({ type: 'SET_DOSSIER', dossier });
+      } else {
+        this.log('No dossier in WELCOME message');
       }
     }
+
+    // Connection is now ready
+    this.dispatch({ type: 'SET_CONNECTION_STEP', step: 'ready' });
   }
 
   private handleDecision(message: UhumMessage): void {

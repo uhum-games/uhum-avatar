@@ -716,3 +716,598 @@ export function termToObject(term: Term): unknown {
       return null;
   }
 }
+
+// ============================================================================
+// Dossier Extraction
+// ============================================================================
+
+import type {
+  AgentDossier,
+  DossierIdentity,
+  DossierIntent,
+  DossierParam,
+  DossierPresentation,
+  DossierBrand,
+  DossierHomeSection,
+  DossierView,
+  DossierViewColumn,
+  DossierViewAction,
+  DossierViewFilter,
+  DossierViewType,
+  DossierLayoutHint,
+} from './types';
+
+/**
+ * Extract dossier from a WELCOME message body.
+ *
+ * Body format:
+ * welcome([
+ *   agent(id, version),
+ *   resume(token),
+ *   cursor(0),
+ *   dossier([
+ *     identity([id(...), name(...), ...]),
+ *     intents([intent(...), ...]),
+ *     presentation([...])
+ *   ])
+ * ])
+ */
+export function extractDossierFromWelcome(body: Term): AgentDossier | null {
+  if (body.type !== 'compound' || body.functor !== 'welcome') {
+    return null;
+  }
+
+  const welcomeList = body.args[0];
+  if (welcomeList?.type !== 'list') {
+    return null;
+  }
+
+  // Find dossier(...) in the welcome list
+  let dossierTerm: Term | null = null;
+  let agentId = '';
+  let agentVersion = '';
+
+  for (const item of welcomeList.items) {
+    if (item.type === 'compound') {
+      if (item.functor === 'dossier') {
+        dossierTerm = item;
+      } else if (item.functor === 'agent' && item.args.length >= 2) {
+        // agent(id, version)
+        agentId = extractString(item.args[0]) || '';
+        agentVersion = extractString(item.args[1]) || '';
+      }
+    }
+  }
+
+  if (!dossierTerm) {
+    // No dossier in WELCOME - create minimal one from agent info
+    if (agentId) {
+      return {
+        identity: {
+          id: agentId,
+          name: agentId,
+          version: agentVersion || '0.0.0',
+        },
+        intents: [],
+      };
+    }
+    return null;
+  }
+
+  // Parse dossier([...])
+  const dossierList = dossierTerm.args[0];
+  if (dossierList?.type !== 'list') {
+    return null;
+  }
+
+  let identity: DossierIdentity = { id: agentId, name: agentId, version: agentVersion };
+  let intents: DossierIntent[] = [];
+  let presentation: DossierPresentation | undefined;
+
+  for (const item of dossierList.items) {
+    if (item.type !== 'compound') continue;
+
+    switch (item.functor) {
+      case 'identity':
+        identity = parseIdentity(item.args[0], agentId, agentVersion);
+        break;
+      case 'intents':
+        intents = parseIntents(item.args[0]);
+        break;
+      case 'presentation':
+        presentation = parsePresentation(item.args[0]);
+        break;
+    }
+  }
+
+  return { identity, intents, presentation };
+}
+
+/**
+ * Parse identity section.
+ */
+function parseIdentity(term: Term | undefined, defaultId: string, defaultVersion: string): DossierIdentity {
+  const identity: DossierIdentity = {
+    id: defaultId,
+    name: defaultId,
+    version: defaultVersion,
+  };
+
+  if (!term || term.type !== 'list') return identity;
+
+  for (const item of term.items) {
+    if (item.type !== 'compound' || item.args.length < 1) continue;
+
+    const value = extractString(item.args[0]);
+    switch (item.functor) {
+      case 'id':
+        identity.id = value || defaultId;
+        break;
+      case 'name':
+        identity.name = value || defaultId;
+        break;
+      case 'version':
+        identity.version = value || defaultVersion;
+        break;
+      case 'description':
+        identity.description = value || undefined;
+        break;
+      case 'tags':
+        if (item.args[0]?.type === 'list') {
+          identity.tags = item.args[0].items.map(t => extractString(t) || '').filter(Boolean);
+        }
+        break;
+    }
+  }
+
+  return identity;
+}
+
+/**
+ * Parse intents section.
+ */
+function parseIntents(term: Term | undefined): DossierIntent[] {
+  if (!term || term.type !== 'list') return [];
+
+  const intents: DossierIntent[] = [];
+
+  for (const item of term.items) {
+    if (item.type !== 'compound' || item.functor !== 'intent') continue;
+
+    const intent = parseIntent(item);
+    if (intent) intents.push(intent);
+  }
+
+  return intents;
+}
+
+/**
+ * Parse a single intent.
+ */
+function parseIntent(term: Term): DossierIntent | null {
+  if (term.type !== 'compound' || term.functor !== 'intent') return null;
+
+  const name = extractString(term.args[0]);
+  if (!name) return null;
+
+  const intent: DossierIntent = { name };
+
+  const propsList = term.args[1];
+  if (propsList?.type !== 'list') return intent;
+
+  for (const prop of propsList.items) {
+    if (prop.type !== 'compound') continue;
+
+    switch (prop.functor) {
+      case 'description':
+        intent.description = extractString(prop.args[0]) || undefined;
+        break;
+      case 'params':
+        intent.params = parseParams(prop.args[0]);
+        break;
+      case 'effects':
+        if (prop.args[0]?.type === 'list') {
+          intent.effects = prop.args[0].items.map(t => extractString(t) || '').filter(Boolean);
+        }
+        break;
+    }
+  }
+
+  return intent;
+}
+
+/**
+ * Parse intent parameters.
+ */
+function parseParams(term: Term | undefined): DossierParam[] {
+  if (!term || term.type !== 'list') return [];
+
+  const params: DossierParam[] = [];
+
+  for (const item of term.items) {
+    if (item.type !== 'compound' || item.functor !== 'param') continue;
+
+    const name = extractString(item.args[0]);
+    const type = extractString(item.args[1]) || 'string';
+    const requiredAtom = item.args[2];
+    const required = requiredAtom?.type === 'atom' && requiredAtom.value === 'required';
+    const description = item.args[3] ? extractString(item.args[3]) ?? undefined : undefined;
+
+    if (name) {
+      params.push({ name, type, required, description });
+    }
+  }
+
+  return params;
+}
+
+/**
+ * Parse presentation section.
+ */
+function parsePresentation(term: Term | undefined): DossierPresentation | undefined {
+  if (!term || term.type !== 'list') return undefined;
+
+  const presentation: DossierPresentation = {};
+
+  for (const item of term.items) {
+    if (item.type !== 'compound') continue;
+
+    switch (item.functor) {
+      case 'brand':
+        presentation.brand = parseBrand(item.args[0]);
+        break;
+      case 'home':
+        presentation.home = parseHome(item.args[0]);
+        break;
+      case 'views':
+        presentation.views = parseViews(item.args[0]);
+        break;
+      case 'layouts':
+        presentation.layouts = parseLayouts(item.args[0]);
+        break;
+    }
+  }
+
+  return Object.keys(presentation).length > 0 ? presentation : undefined;
+}
+
+/**
+ * Parse brand info.
+ */
+function parseBrand(term: Term | undefined): DossierBrand | undefined {
+  if (!term || term.type !== 'list') return undefined;
+
+  const brand: DossierBrand = {};
+
+  for (const item of term.items) {
+    if (item.type !== 'compound') continue;
+
+    const value = extractString(item.args[0]);
+    switch (item.functor) {
+      case 'name':
+        brand.name = value || undefined;
+        break;
+      case 'logo':
+        brand.logo = value || undefined;
+        break;
+      case 'primary_color':
+        brand.primaryColor = value || undefined;
+        break;
+      case 'secondary_color':
+        brand.secondaryColor = value || undefined;
+        break;
+      case 'accent_color':
+        brand.accentColor = value || undefined;
+        break;
+      case 'tone':
+        brand.tone = value || undefined;
+        break;
+      case 'greetings':
+        // greetings(["Hello!", "Hi there!", ...])
+        if (item.args[0]?.type === 'list') {
+          brand.greetings = item.args[0].items
+            .map(t => extractString(t))
+            .filter((s): s is string => s !== null && s.length > 0);
+        }
+        break;
+    }
+  }
+
+  return Object.keys(brand).length > 0 ? brand : undefined;
+}
+
+/**
+ * Parse home sections.
+ */
+function parseHome(term: Term | undefined): DossierHomeSection[] | undefined {
+  if (!term || term.type !== 'list') return undefined;
+
+  const sections: DossierHomeSection[] = [];
+
+  for (const item of term.items) {
+    if (item.type !== 'compound' || item.functor !== 'section') continue;
+
+    const name = extractString(item.args[0]);
+    if (!name) continue;
+
+    const section: DossierHomeSection = { name };
+    const propsList = item.args[1];
+
+    if (propsList?.type === 'list') {
+      for (const prop of propsList.items) {
+        if (prop.type !== 'compound') continue;
+
+        switch (prop.functor) {
+          case 'message':
+            section.message = extractString(prop.args[0]) || undefined;
+            break;
+          case 'data_source':
+            section.dataSource = extractString(prop.args[0]) || undefined;
+            break;
+          case 'layout_hint':
+            section.layoutHint = extractString(prop.args[0]) || undefined;
+            break;
+          case 'actions':
+            if (prop.args[0]?.type === 'list') {
+              section.actions = prop.args[0].items.map(t => extractString(t) || '').filter(Boolean);
+            }
+            break;
+        }
+      }
+    }
+
+    sections.push(section);
+  }
+
+  return sections.length > 0 ? sections : undefined;
+}
+
+/**
+ * Parse view definitions.
+ */
+function parseViews(term: Term | undefined): DossierView[] | undefined {
+  if (!term || term.type !== 'list') return undefined;
+
+  const views: DossierView[] = [];
+
+  for (const item of term.items) {
+    if (item.type !== 'compound' || item.functor !== 'view') continue;
+
+    const name = extractString(item.args[0]);
+    if (!name) continue;
+
+    const view: DossierView = { name };
+    const propsList = item.args[1];
+
+    if (propsList?.type === 'list') {
+      for (const prop of propsList.items) {
+        if (prop.type !== 'compound') continue;
+
+        switch (prop.functor) {
+          case 'title':
+            view.title = extractString(prop.args[0]) || undefined;
+            break;
+          case 'description':
+            view.description = extractString(prop.args[0]) || undefined;
+            break;
+          case 'type':
+            view.type = extractString(prop.args[0]) as DossierViewType || undefined;
+            break;
+          case 'source':
+            view.source = extractString(prop.args[0]) || undefined;
+            break;
+          case 'icon':
+            view.icon = extractString(prop.args[0]) || undefined;
+            break;
+          case 'is_default':
+            view.isDefault = prop.args[0]?.type === 'atom' && prop.args[0].value === 'true';
+            break;
+          case 'columns':
+            view.columns = parseViewColumns(prop.args[0]);
+            break;
+          case 'actions':
+            view.actions = parseViewActions(prop.args[0]);
+            break;
+          case 'filters':
+            view.filters = parseViewFilters(prop.args[0]);
+            break;
+          case 'default_sort':
+            view.defaultSort = parseDefaultSort(prop.args[0]);
+            break;
+        }
+      }
+    }
+
+    views.push(view);
+  }
+
+  return views.length > 0 ? views : undefined;
+}
+
+/**
+ * Parse view columns.
+ * Format: columns([column(name, type, "Label"), ...])
+ */
+function parseViewColumns(term: Term | undefined): DossierViewColumn[] | undefined {
+  if (!term || term.type !== 'list') return undefined;
+
+  const columns: DossierViewColumn[] = [];
+
+  for (const item of term.items) {
+    if (item.type !== 'compound' || item.functor !== 'column') continue;
+
+    const name = extractString(item.args[0]);
+    const type = extractString(item.args[1]) || 'string';
+    const label = extractString(item.args[2]) || name || '';
+
+    if (name) {
+      const column: DossierViewColumn = { name, type, label };
+      
+      // Parse optional properties from 4th argument if present
+      const optsList = item.args[3];
+      if (optsList?.type === 'list') {
+        for (const opt of optsList.items) {
+          if (opt.type !== 'compound') continue;
+          switch (opt.functor) {
+            case 'sortable':
+              column.sortable = opt.args[0]?.type === 'atom' && opt.args[0].value === 'true';
+              break;
+            case 'filterable':
+              column.filterable = opt.args[0]?.type === 'atom' && opt.args[0].value === 'true';
+              break;
+            case 'width':
+              column.width = extractString(opt.args[0]) || undefined;
+              break;
+          }
+        }
+      }
+      
+      columns.push(column);
+    }
+  }
+
+  return columns.length > 0 ? columns : undefined;
+}
+
+/**
+ * Parse view actions.
+ * Format: actions([action(intent, "Label", icon), ...])
+ */
+function parseViewActions(term: Term | undefined): DossierViewAction[] | undefined {
+  if (!term || term.type !== 'list') return undefined;
+
+  const actions: DossierViewAction[] = [];
+
+  for (const item of term.items) {
+    if (item.type !== 'compound' || item.functor !== 'action') continue;
+
+    const intent = extractString(item.args[0]);
+    const label = extractString(item.args[1]) || intent || '';
+
+    if (intent) {
+      const action: DossierViewAction = { intent, label };
+      
+      // Optional icon (3rd arg)
+      if (item.args[2]) {
+        action.icon = extractString(item.args[2]) || undefined;
+      }
+      
+      // Parse optional properties from 4th argument if present
+      const optsList = item.args[3];
+      if (optsList?.type === 'list') {
+        for (const opt of optsList.items) {
+          if (opt.type !== 'compound') continue;
+          switch (opt.functor) {
+            case 'variant':
+              action.variant = extractString(opt.args[0]) as 'primary' | 'secondary' | 'danger' || undefined;
+              break;
+            case 'requires_selection':
+              action.requiresSelection = opt.args[0]?.type === 'atom' && opt.args[0].value === 'true';
+              break;
+          }
+        }
+      }
+      
+      actions.push(action);
+    }
+  }
+
+  return actions.length > 0 ? actions : undefined;
+}
+
+/**
+ * Parse view filters.
+ * Format: filters([filter(field, type, "Label", [options]), ...])
+ */
+function parseViewFilters(term: Term | undefined): DossierViewFilter[] | undefined {
+  if (!term || term.type !== 'list') return undefined;
+
+  const filters: DossierViewFilter[] = [];
+
+  for (const item of term.items) {
+    if (item.type !== 'compound' || item.functor !== 'filter') continue;
+
+    const field = extractString(item.args[0]);
+    const type = (extractString(item.args[1]) || 'select') as DossierViewFilter['type'];
+
+    if (field) {
+      const filter: DossierViewFilter = { field, type };
+      
+      // Optional label (3rd arg)
+      if (item.args[2]) {
+        filter.label = extractString(item.args[2]) || undefined;
+      }
+      
+      // Optional options list (4th arg)
+      if (item.args[3]?.type === 'list') {
+        filter.options = item.args[3].items
+          .map(t => extractString(t))
+          .filter((s): s is string => s !== null);
+      }
+      
+      filters.push(filter);
+    }
+  }
+
+  return filters.length > 0 ? filters : undefined;
+}
+
+/**
+ * Parse default sort configuration.
+ * Format: default_sort([field(name), direction(asc|desc)])
+ */
+function parseDefaultSort(term: Term | undefined): DossierView['defaultSort'] | undefined {
+  if (!term || term.type !== 'list') return undefined;
+
+  let field: string | undefined;
+  let direction: 'asc' | 'desc' = 'asc';
+
+  for (const item of term.items) {
+    if (item.type !== 'compound') continue;
+    
+    switch (item.functor) {
+      case 'field':
+        field = extractString(item.args[0]) || undefined;
+        break;
+      case 'direction':
+        const dir = extractString(item.args[0]);
+        if (dir === 'asc' || dir === 'desc') {
+          direction = dir;
+        }
+        break;
+    }
+  }
+
+  return field ? { field, direction } : undefined;
+}
+
+/**
+ * Parse layout hints.
+ */
+function parseLayouts(term: Term | undefined): DossierLayoutHint[] | undefined {
+  if (!term || term.type !== 'list') return undefined;
+
+  const layouts: DossierLayoutHint[] = [];
+
+  for (const item of term.items) {
+    if (item.type !== 'compound' || item.functor !== 'layout_hint') continue;
+
+    const dataType = extractString(item.args[0]);
+    const layout = extractString(item.args[1]);
+    if (!dataType || !layout) continue;
+
+    layouts.push({ dataType, layout });
+  }
+
+  return layouts.length > 0 ? layouts : undefined;
+}
+
+/**
+ * Extract string value from term.
+ */
+function extractString(term: Term | undefined): string | null {
+  if (!term) return null;
+  if (term.type === 'string') return term.value;
+  if (term.type === 'atom') return term.value;
+  return null;
+}

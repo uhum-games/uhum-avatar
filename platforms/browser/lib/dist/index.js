@@ -29,6 +29,7 @@ export { useAgent } from './hooks/useAgent';
 // Components (re-export for convenience)
 export { UhumView } from './components/UhumView';
 export { MessageDisplay } from './components/MessageDisplay';
+export { SmartChat, } from './components/SmartChat';
 // Protocol (Uhum frame encoding/decoding)
 export { Term, termToString, parseTerm, encodeFrame, decodeFrame, parseMessage, buildJoinMessage, buildIntentionMessage, buildTextMessage, buildLeaveMessage, } from './protocol';
 // WASM utilities

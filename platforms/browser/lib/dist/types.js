@@ -18,6 +18,8 @@ export function createInitialState() {
         connected: false,
         agentId: null,
         connectionState: 'disconnected',
+        connectionStep: 'idle',
+        dossier: null,
     };
 }
 /**
@@ -106,6 +108,12 @@ export function avatarReducer(state, action) {
             };
         case 'SET_CONNECTION_STATE':
             return { ...state, connectionState: action.state };
+        case 'SET_CONNECTION_STEP':
+            return { ...state, connectionStep: action.step };
+        case 'SET_DOSSIER':
+            return { ...state, dossier: action.dossier };
+        case 'CLEAR_DOSSIER':
+            return { ...state, dossier: null };
         default:
             return state;
     }
