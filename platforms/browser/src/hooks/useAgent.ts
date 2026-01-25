@@ -31,14 +31,14 @@ export interface UseAgentResult {
 /**
  * Hook for managing an Agent connection.
  *
- * @param agentUrl - WebSocket URL of the Agent (e.g., 'wss://brain.example.com/acme.billing')
+ * @param agentUrl - WebSocket URL of the Agent (e.g., 'wss://agent.example.com/acme.billing')
  * @param options - Optional configuration
  *
  * @example
  * ```tsx
  * function InvoiceApp() {
  *   const { connected, connecting, connect, sendIntention } = useAgent(
- *     'wss://brain.example.com/acme.billing'
+ *     'wss://agent.example.com/acme.billing'
  *   );
  *
  *   useEffect(() => {

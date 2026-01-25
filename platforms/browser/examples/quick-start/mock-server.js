@@ -1,7 +1,7 @@
 /**
- * Mock WebSocket Server for Uhum Avatar Demo
+ * Mock WebSocket Server for Uhum Avatar Quick Start
  *
- * Simulates a Brain agent for testing the Avatar client.
+ * Simulates an Agent for testing the Avatar client.
  *
  * Run with: node mock-server.js
  */
@@ -20,7 +20,7 @@ const invoices = [
 
 const wss = new WebSocketServer({ port: PORT });
 
-console.log(`🧠 Mock Brain Server running on ws://localhost:${PORT}`);
+console.log(`👤 Mock Agent Server running on ws://localhost:${PORT}`);
 
 wss.on('connection', (ws) => {
   console.log('✅ Client connected');

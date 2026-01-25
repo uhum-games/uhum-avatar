@@ -51,7 +51,7 @@ UI components have their action encoded:
 ┌──────────────────────────────────────────────────────────────┐
 │  [Pay Invoice]                                                │
 │                                                              │
-│  Component metadata (in UHUM Language):                       │
+│  Component metadata (in Uhum Language):                       │
 │  {                                                           │
 │    action: intent,                                           │
 │    intent: pay_invoice,                                      │
@@ -135,7 +135,7 @@ These happen entirely in the Avatar without any Brain communication.
 
 ## 4. Component Action Metadata
 
-Every interactive component has action metadata in UHUM Language:
+Every interactive component has action metadata in Uhum Language:
 
 ```prolog
 % Button that triggers an intent

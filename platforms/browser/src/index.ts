@@ -1,7 +1,7 @@
 /**
  * @uhum/avatar - Uhum Avatar client for browsers
  *
- * The Avatar is the client-side runtime that connects to UHUM Agents (Brains)
+ * The Avatar is the client-side runtime that connects to Uhum Agents
  * and renders the Uhum View interface.
  *
  * @example
@@ -10,7 +10,7 @@
  *
  * // Direct usage
  * const avatar = new AvatarClient();
- * await avatar.connect('wss://brain.example.com/acme.billing');
+ * await avatar.connect('wss://agent.example.com/acme.billing');
  *
  * // React hooks
  * function App() {
@@ -43,7 +43,7 @@ export { useAgent, type UseAgentResult } from './hooks/useAgent';
 export { UhumView } from './components/UhumView';
 export { MessageDisplay } from './components/MessageDisplay';
 
-// Protocol (UHUM frame encoding/decoding)
+// Protocol (Uhum frame encoding/decoding)
 export {
   Term,
   termToString,

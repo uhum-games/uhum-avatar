@@ -1,4 +1,4 @@
-//! Error types for the UHUM Avatar.
+//! Error types for the Uhum Avatar.
 
 use thiserror::Error;
 

@@ -140,7 +140,7 @@ export function useAvatarSelector<T>(selector: (state: AvatarState) => T): T {
  *   const client = useAvatarClient();
  *
  *   const handleConnect = async () => {
- *     await client.connect('wss://brain.example.com/acme.billing');
+ *     await client.connect('wss://agent.example.com/acme.billing');
  *   };
  *
  *   return <button onClick={handleConnect}>Connect</button>;

@@ -3,7 +3,7 @@ name = "ua-agent"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Agent communication layer for UHUM Avatar (session, sync, queue, dossier)"
+description = "Agent communication layer for Uhum Avatar (session, sync, queue, dossier)"
 
 [dependencies]
 # Internal crates

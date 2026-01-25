@@ -3,7 +3,7 @@ name = "ua-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Shared types and platform boundary traits for UHUM Avatar"
+description = "Shared types and platform boundary traits for Uhum Avatar"
 
 [dependencies]
 # Shared Uhum Brain crates

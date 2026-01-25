@@ -1,4 +1,4 @@
-//! # UHUM Avatar View Layer
+//! # Uhum Avatar View Layer
 //!
 //! This crate handles the Uhum View rendering and state management:
 //!

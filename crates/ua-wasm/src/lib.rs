@@ -1,4 +1,4 @@
-//! # UHUM Avatar WASM Bindings
+//! # Uhum Avatar WASM Bindings
 //!
 //! This crate provides WebAssembly bindings for the Avatar core,
 //! enabling the Avatar to run in web browsers.

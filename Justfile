@@ -55,20 +55,25 @@ browser-build:
     cd platforms/browser && pnpm run build
 
 # =============================================================================
-# Example App
+# Quick Start Example
 # =============================================================================
 
-# Install example app dependencies
-example-install:
-    cd platforms/browser/examples/demo && pnpm install
+# Install quick-start example dependencies
+quick-start-install:
+    cd platforms/browser/examples/quick-start && pnpm install
 
-# Run the example app (dev server)
-example-dev:
-    cd platforms/browser/examples/demo && pnpm run dev
+# Run the quick-start example (dev server)
+quick-start-dev:
+    cd platforms/browser/examples/quick-start && pnpm run dev
 
-# Run the mock Brain server for example app
-example-server:
-    cd platforms/browser/examples/demo && node mock-server.js
+# Run the mock Brain server for quick-start example
+quick-start-server:
+    cd platforms/browser/examples/quick-start && node mock-server.js
+
+# Aliases for convenience
+example-install: quick-start-install
+example-dev: quick-start-dev
+example-server: quick-start-server
 
 # =============================================================================
 # Development
@@ -91,14 +96,14 @@ clean:
     cargo clean
     rm -rf platforms/browser/wasm
     rm -rf platforms/browser/dist
-    rm -rf platforms/browser/examples/demo/node_modules
+    rm -rf platforms/browser/examples/quick-start/node_modules
 
 # =============================================================================
 # Full Workflows
 # =============================================================================
 
 # Setup everything for development
-setup: build browser-install example-install
+setup: build browser-install quick-start-install
     @echo "✅ Setup complete!"
 
 # Build everything for production

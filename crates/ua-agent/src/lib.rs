@@ -1,4 +1,4 @@
-//! # UHUM Avatar Agent Communication
+//! # Uhum Avatar Agent Communication
 //!
 //! This crate handles all communication with Agents (server-side Brains):
 //!

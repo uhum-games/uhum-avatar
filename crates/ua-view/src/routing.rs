@@ -19,7 +19,7 @@ use ub_protocol::Term;
 
 /// Action metadata attached to UI components.
 ///
-/// Every interactive component has action metadata in UHUM Language
+/// Every interactive component has action metadata in Uhum Language
 /// that tells the Avatar what to do when the user interacts with it.
 #[derive(Debug, Clone)]
 pub enum ComponentAction {

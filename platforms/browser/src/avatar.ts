@@ -2,7 +2,7 @@
  * Avatar Client - Main entry point for browser applications.
  *
  * The AvatarClient manages:
- * - WebSocket connection to the Brain (using UHUM protocol)
+ * - WebSocket connection to the Agent (using Uhum protocol)
  * - State management (reactive, event-driven)
  * - View instruction processing
  * - Scheduled effects (timers)
@@ -72,7 +72,7 @@ interface ScheduledEffect {
  * });
  *
  * // Connect to an agent
- * await avatar.connect('ws://localhost:8080', 'demo.agent');
+ * await avatar.connect('ws://localhost:8080', 'quickstart.billing');
  *
  * // Send an intention
  * avatar.sendIntention('pay_invoice', { invoice_id: 'INV-123' });
@@ -137,7 +137,7 @@ export class AvatarClient {
   }
 
   /**
-   * Process view instructions from the Brain.
+   * Process view instructions from the Agent.
    */
   processInstructions(instructions: ViewInstruction[]): void {
     for (const instruction of instructions) {
@@ -155,10 +155,10 @@ export class AvatarClient {
   }
 
   /**
-   * Connect to an Agent via WebSocket using UHUM protocol.
+   * Connect to an Agent via WebSocket using Uhum protocol.
    *
    * @param url - WebSocket URL (e.g., 'ws://localhost:8080')
-   * @param agentAddress - Agent address (e.g., 'demo.agent')
+   * @param agentAddress - Agent address (e.g., 'acme.billing')
    */
   async connect(url: string, agentAddress?: string): Promise<void> {
     // Extract agent address from URL if not provided
@@ -172,7 +172,7 @@ export class AvatarClient {
       this.socket.onopen = () => {
         this.log('WebSocket connected, sending JOIN');
 
-        // Send JOIN message using UHUM protocol
+        // Send JOIN message using Uhum protocol
         const joinMsg = buildJoinMessage({
           avatarId: this.sessionId,
           agentAddress: this.agentAddress,
@@ -260,13 +260,13 @@ export class AvatarClient {
   // === Private methods ===
 
   private extractAgentAddress(url: string): string {
-    // Try to extract from URL path, fallback to 'demo.agent'
+    // Try to extract from URL path, fallback to 'default.agent'
     try {
       const parsed = new URL(url);
       const path = parsed.pathname.slice(1); // Remove leading /
-      return path || 'demo.agent';
+      return path || 'default.agent';
     } catch {
-      return 'demo.agent';
+      return 'default.agent';
     }
   }
 
@@ -304,9 +304,9 @@ export class AvatarClient {
           break;
 
         case 'error':
-          this.handleError(message);
+          const errorMessage = this.handleError(message);
           if (rejectConnect) {
-            rejectConnect(new Error('Connection rejected'));
+            rejectConnect(new Error(errorMessage));
           }
           break;
 
@@ -370,7 +370,7 @@ export class AvatarClient {
           break;
       }
     } catch {
-      this.log('Message is neither UHUM nor JSON, ignoring');
+      this.log('Message is neither Uhum nor JSON, ignoring');
     }
   }
 
@@ -459,22 +459,36 @@ export class AvatarClient {
     }
   }
 
-  private handleError(message: UhumMessage): void {
+  private handleError(message: UhumMessage): string {
     this.log('Received ERROR:', message);
 
+    let errorCode = 'unknown_error';
     let errorText = 'An error occurred';
+
+    // Parse error(code, message, details) term
     if (message.body?.type === 'compound' && message.body.functor === 'error') {
-      const msgArg = message.body.args[0];
+      const [codeArg, msgArg] = message.body.args;
+
+      // First arg is the error code (atom)
+      if (codeArg?.type === 'atom') {
+        errorCode = codeArg.name;
+      }
+
+      // Second arg is the error message (string)
       if (msgArg?.type === 'string') {
         errorText = msgArg.value;
       }
     }
+
+    this.log(`Error [${errorCode}]: ${errorText}`);
 
     this.dispatch({
       type: 'SHOW_MESSAGE',
       text: errorText,
       messageType: 'error',
     });
+
+    return `[${errorCode}] ${errorText}`;
   }
 
   private termInstructionsToViewInstructions(terms: Term[]): ViewInstruction[] {

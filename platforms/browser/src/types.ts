@@ -109,7 +109,7 @@ export type Action =
   | { type: 'SET_CONNECTION_STATE'; state: ConnectionState };
 
 /**
- * View instruction from Brain.
+ * View instruction from Agent.
  */
 export interface ViewInstruction {
   type: string;

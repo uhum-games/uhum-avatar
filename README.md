@@ -1,6 +1,6 @@
-# UHUM Avatar
+# Uhum Avatar
 
-The **Avatar** is the client-side runtime for the UHUM network. It connects to Brains, syncs memory, sends intentions, and renders the **Uhum View**.
+The **Avatar** is the client-side runtime for the Uhum network. It connects to Brains, syncs memory, sends intentions, and renders the **Uhum View**.
 
 ## What is the Avatar?
 
@@ -8,12 +8,12 @@ The Avatar has two fundamental aspects:
 
 ### 1. Generic Client (Platform-Agnostic Core)
 
-A universal client for the UHUM network:
+A universal client for the Uhum network:
 
 - **Reads Agent Dossiers** — understands what any agent can do
 - **Queries the Network** — discovers agents via `uhum://uhum.discovery`
 - **Multi-Agent Connections** — can connect to multiple agents simultaneously
-- **Protocol Compliance** — speaks UHUM protocol fluently
+- **Protocol Compliance** — speaks Uhum protocol fluently
 - **Memory Sync** — cursor-based synchronization with at-least-once delivery
 - **Offline Support** — queues intentions when disconnected
 
@@ -46,7 +46,7 @@ uhum-avatar/
 │   └── browser/            # TypeScript + React
 │       ├── src/            # @uhum/avatar package
 │       └── examples/
-│           └── demo/       # Demo invoice app
+│           └── quick-start/  # Quick-start invoice app
 │
 └── specs/                  # Specifications
     ├── UHUM-VIEW.md        # Rendering architecture

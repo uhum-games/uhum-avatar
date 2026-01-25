@@ -1,6 +1,6 @@
 # Uhum View Specification
 
-This document defines **Uhum View** — the unified visual interface for the UHUM network.
+This document defines **Uhum View** — the unified visual interface for the Uhum network.
 
 ---
 
@@ -349,7 +349,7 @@ We considered separating presentation hints into a separate document:
 
 ### Why User > Builder > Defaults?
 
-This priority order reflects the UHUM philosophy:
+This priority order reflects the Uhum philosophy:
 
 1. **User is sovereign** — their preferences always win
 2. **Builder knows their domain** — good defaults for their use case

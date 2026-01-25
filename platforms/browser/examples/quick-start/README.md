@@ -1,10 +1,10 @@
-# Uhum Avatar Example App - Invoice App
+# Uhum Avatar Quick Start - Invoice App
 
-An example application showcasing the Uhum Avatar client library.
+A quick-start example showcasing the Uhum Avatar client library.
 
 ## Features
 
-- 🔌 **WebSocket Connection** — Connects to a Brain agent (mock or real)
+- 🔌 **WebSocket Connection** — Connects to an Agent (mock or real)
 - 📋 **Invoice Management** — View and pay invoices
 - 💬 **Chat Interface** — Send text messages to the AI
 - ✨ **Reactive UI** — State changes trigger UI updates
@@ -15,7 +15,7 @@ An example application showcasing the Uhum Avatar client library.
 ### 1. Install Dependencies
 
 ```bash
-cd platforms/browser/examples/demo
+cd platforms/browser/examples/quick-start
 pnpm install
 ```
 
@@ -25,7 +25,7 @@ pnpm install
 pnpm run mock-server
 ```
 
-This starts a WebSocket server at `ws://localhost:8080` that simulates a Brain agent.
+This starts a WebSocket server at `ws://localhost:8080` that simulates an Agent.
 
 ### 3. Start the Dev Server
 
@@ -39,7 +39,7 @@ Open http://localhost:3000 in your browser.
 
 ## Offline Mode
 
-If the Brain isn't running, the app runs in "offline mode" with sample data. You can still:
+If the Agent isn't running, the app runs in "offline mode" with sample data. You can still:
 
 - View invoices
 - Click "Pay Now" to simulate payment
@@ -74,7 +74,7 @@ If the Brain isn't running, the app runs in "offline mode" with sample data. You
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Mock Brain Server                             │
+│                    Mock Agent Server                             │
 │                    (Node.js + ws)                                │
 │                                                                  │
 │   • Sends MEMORY with invoices                                   │
@@ -103,7 +103,7 @@ Try typing:
 ## Project Structure
 
 ```
-demo/
+quick-start/
 ├── src/
 │   ├── main.tsx          # Entry point
 │   ├── App.tsx           # Main app component
@@ -113,21 +113,36 @@ demo/
 │       ├── ConnectionStatus.tsx
 │       ├── InvoiceList.tsx
 │       └── ChatInput.tsx
-├── mock-server.js        # Mock Brain server
+├── mock-server.js        # Mock Agent server
 ├── index.html
 ├── package.json
 ├── vite.config.ts
 └── README.md
 ```
 
-## Customization
+## Configuration
 
-### Connecting to a Real Brain
+The Avatar connection is configured via environment variables:
 
-Update the WebSocket URL in `App.tsx`:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_AGENT_URL` | `ws://localhost:8080` | Agent WebSocket URL |
+| `VITE_AGENT_ID` | `quickstart.billing` | Agent ID to connect to |
 
-```tsx
-await client.connect('wss://your-brain.example.com/agent');
+### Connecting to a Real Agent
+
+Create a `.env.local` file:
+
+```bash
+# .env.local
+VITE_AGENT_URL=wss://your-agent.example.com
+VITE_AGENT_ID=acme.billing
+```
+
+Or set inline:
+
+```bash
+VITE_AGENT_URL=wss://your-agent.example.com VITE_AGENT_ID=acme.billing pnpm dev
 ```
 
 ### Adding New Intents

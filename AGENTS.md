@@ -5,7 +5,7 @@ When working on this codebase, always refer to the following specifications:
 ## Specifications
 
 - **[../uhum-brain/specs/ARCHITECTURE.md](../uhum-brain/specs/ARCHITECTURE.md)** — System architecture, Agent vs Brain distinction, decision flow
-- **[../uhum-brain/specs/PROTOCOL.md](../uhum-brain/specs/PROTOCOL.md)** — UHUM protocol, message types, term syntax
+- **[../uhum-brain/specs/PROTOCOL.md](../uhum-brain/specs/PROTOCOL.md)** — Uhum protocol, message types, term syntax
 - **[./specs/UHUM-VIEW.md](./specs/UHUM-VIEW.md)** — Uhum View rendering, layered architecture, user preferences
 - **[./specs/VIEW-INSTRUCTIONS.md](./specs/VIEW-INSTRUCTIONS.md)** — View instructions from Brain, variable binding, reactive architecture
 - **[./specs/SMART-ROUTING.md](./specs/SMART-ROUTING.md)** — Input handling, text vs UI interactions, Brain gateway
@@ -19,12 +19,12 @@ The Avatar is the **client-side runtime** that connects to Brains. It has **two 
 
 ### 1. Generic Client (Platform-Agnostic Core)
 
-The Avatar is a **universal client** for the UHUM network:
+The Avatar is a **universal client** for the Uhum network:
 
 - **Reads Agent Dossiers** — understands what any agent can do (intents, parameters, effects)
 - **Queries the Network** — discovers agents via `uhum://uhum.discovery`
 - **Multi-Agent Connections** — can connect to multiple agents simultaneously (future)
-- **Protocol Compliance** — speaks UHUM protocol fluently (Terms, Frames, LiveLink)
+- **Protocol Compliance** — speaks Uhum protocol fluently (Terms, Frames, LiveLink)
 - **Memory Sync** — cursor-based synchronization with at-least-once delivery
 - **Offline Support** — queues intentions when disconnected, syncs when reconnected
 
@@ -148,7 +148,7 @@ Rendering decisions come from three layers:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                          UHUM VIEW                               │
+│                          Uhum View                                │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │  🤖 Acme Billing                              [Settings]   │  │
 │  └───────────────────────────────────────────────────────────┘  │
@@ -369,7 +369,7 @@ The Avatar is a **thin client** — all interpretation happens in the Brain's ga
 
 ### Component Action Metadata
 
-Interactive components have their action encoded in UHUM Language:
+Interactive components have their action encoded in Uhum Language:
 
 ```prolog
 % Button triggers an intent

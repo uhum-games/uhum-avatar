@@ -1,7 +1,7 @@
 /**
- * UHUM Protocol encoder/decoder for TypeScript.
+ * Uhum Protocol encoder/decoder for TypeScript.
  *
- * UHUM frames consist of:
+ * Uhum frames consist of:
  * - Version line: "UHUM/1.0"
  * - Headers: "key: value" pairs
  * - Empty line separator
@@ -12,8 +12,8 @@
  * UHUM/1.0
  * type: intention
  * id: msg_001
- * from: uhum://avatar:demo.agent/ses_abc
- * to: uhum://demo.agent
+ * from: uhum://avatar:quickstart.billing/ses_abc
+ * to: uhum://quickstart.billing
  * at: 1706140800000
  *
  * intention(pay_invoice, [invoice_id("INV-001")]).

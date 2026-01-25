@@ -1,6 +1,6 @@
-//! # UHUM Avatar Core
+//! # Uhum Avatar Core
 //!
-//! Shared types and platform boundary traits for the UHUM Avatar.
+//! Shared types and platform boundary traits for the Uhum Avatar.
 //!
 //! This crate defines:
 //! - **Error types** — Common error handling

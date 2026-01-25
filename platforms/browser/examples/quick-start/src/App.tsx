@@ -10,20 +10,29 @@ import { Header } from './components/Header';
 import { ConnectionStatus } from './components/ConnectionStatus';
 
 /**
- * Demo Invoice Application using Uhum Avatar.
+ * Quick Start Invoice Application using Uhum Avatar.
  *
  * This demonstrates:
  * - Connecting to an Agent (mock server)
  * - Sending intentions (pay_invoice)
  * - Receiving decisions with view instructions
  * - Reactive state updates
+ *
+ * Configuration (via environment variables):
+ * - VITE_AGENT_URL: WebSocket URL of the Agent (default: ws://localhost:8080)
+ * - VITE_AGENT_ID: Agent ID to connect to (default: quickstart.billing)
  */
+
+// Agent connection configuration
+const AGENT_URL = import.meta.env.VITE_AGENT_URL || 'ws://localhost:8080';
+const AGENT_ID = import.meta.env.VITE_AGENT_ID || 'quickstart.billing';
+
 function App() {
   return (
     <AvatarProvider options={{ debug: true, initialRoute: '/invoices' }}>
-      <UhumView className="demo-app">
+      <UhumView className="quickstart-app">
         <Header />
-        <main className="demo-main">
+        <main className="quickstart-main">
           <InvoiceApp />
         </main>
         <ChatInput />
@@ -36,18 +45,19 @@ function InvoiceApp() {
   const { state, client } = useAvatar();
   const [error, setError] = useState<string | null>(null);
 
-  // Connect to Brain on mount
+  // Connect to Agent on mount
   useEffect(() => {
     const connect = async () => {
       try {
-        // Connect to the Brain using UHUM protocol
-        // The second argument is the agent address
-        await client.connect('ws://localhost:8080', 'demo.agent');
+        // Connect to the Agent using Uhum protocol
+        console.log(`Connecting to ${AGENT_URL} as ${AGENT_ID}...`);
+        await client.connect(AGENT_URL, AGENT_ID);
+        console.log(`Connected to uhum://${AGENT_ID}`);
       } catch (err) {
-        console.log('Could not connect to Brain, using demo mode');
-        setError('Brain not running. Using demo mode with sample data.');
+        console.log('Could not connect to Agent, using offline mode');
+        setError('Agent not running. Using offline mode with sample data.');
 
-        // Load sample data for demo
+        // Load sample data for offline mode
         client.dispatch({
           type: 'UPDATE_FACTS',
           facts: getSampleInvoices(),
@@ -55,7 +65,7 @@ function InvoiceApp() {
         client.dispatch({
           type: 'SET_CONNECTED',
           connected: true,
-          agentId: 'demo.billing',
+          agentId: AGENT_ID,
         });
       }
     };
@@ -71,7 +81,7 @@ function InvoiceApp() {
     if (state.connected) {
       client.sendIntention('pay_invoice', { invoice_id: invoiceId });
     } else {
-      // Demo mode: simulate payment
+      // Offline mode: simulate payment
       simulatePayment(invoiceId, client);
     }
   };
@@ -80,10 +90,10 @@ function InvoiceApp() {
     if (state.connected) {
       client.sendMessage(text);
     } else {
-      // Demo mode: simulate response
+      // Offline mode: simulate response
       client.dispatch({
         type: 'SHOW_MESSAGE',
-        text: `Demo mode: "${text}" would be sent to the Brain`,
+        text: `Offline mode: "${text}" would be sent to the Agent`,
         messageType: 'info',
       });
     }
@@ -106,7 +116,7 @@ function InvoiceApp() {
   );
 }
 
-// Demo helpers
+// Sample data helpers
 
 interface Invoice {
   id: string;

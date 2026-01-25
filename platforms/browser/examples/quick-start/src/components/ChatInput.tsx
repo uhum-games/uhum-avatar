@@ -12,10 +12,10 @@ export function ChatInput() {
     if (state.connected) {
       client.sendMessage(message);
     } else {
-      // Demo mode
+      // Offline mode
       client.dispatch({
         type: 'SHOW_MESSAGE',
-        text: `Demo: "${message}" would be sent to the Brain`,
+        text: `Offline: "${message}" would be sent to the Agent`,
         messageType: 'info',
       });
       setTimeout(() => {
