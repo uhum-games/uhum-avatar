@@ -139,57 +139,240 @@ Builder preferences are included in the **Agent Dossier** as optional presentati
 3. **Not in messages** — never sent with individual decisions/events
 4. **Optional** — agents work fine without presentation hints
 
-### Presentation Hints Structure
+### Presentation Architecture
+
+The presentation layer has four key concepts:
+
+```
+State (global) ──────────────────────────────────────────────────┐
+                                                                 │
+Components (building blocks)                                     │
+  ├── books (list of books)                                      │
+  ├── book_detail (single book) ─────────── depends on ──────────┤
+  └── add_book_form (create form)                                │
+                                                                 │
+Views (composition) ←───────────── activated by ─────────────────┘
+  ├── home (default) ─────────── shows [books]
+  └── book_view ──────────────── shows [books, book_detail]
+```
+
+| Concept | Description | Multiplicity |
+|---------|-------------|--------------|
+| **Brand** | Visual identity (colors, logo, greetings) | Unique (last definition wins) |
+| **State** | Global state schema (flows between Avatar and Brain) | Unique (last definition wins) |
+| **Component** | Reusable UI building block | Multiple |
+| **View** | Composition of components | Multiple (one default) |
+
+### State Schema
+
+State defines **UI state variables** for the Avatar presentation layer. This controls which views and components are shown based on user interactions.
+
+> **Important:** This is **Avatar-only state** — it does NOT flow to the Brain. It is purely for UI behavior defined by the agent author.
 
 ```prolog
-agent(
-  id('acme.ecommerce'),
-  
-  % ... intents, endpoints, etc. (semantic) ...
-  
-  % Presentation hints (optional)
-  presentation([
-    % Brand identity
-    brand([
-      name("Acme Store"),
-      logo("https://acme.com/logo.png"),
-      primary_color("#FF5733"),
-      tone(friendly)
+% State schema - UI state for Avatar (controls which views/components are shown)
+state([
+    selected_book([
+        type(model),           % References a model type
+        source(book),          % The model this variable references
+        description("Currently selected book for detail view")
     ]),
-    
-    % Home/landing suggestions
-    home([
-      section(welcome, [
-        message("Welcome to Acme Store! What can I help you find?")
-      ]),
-      section(featured, [
-        data_source(products, [tag(best_seller)]),
-        layout_hint(grid),
-        max_items(6)
-      ]),
-      section(quick_actions, [
-        actions([search, view_cart, track_order])
-      ])
-    ]),
-    
-    % Layout hints for specific data types
-    layouts([
-      layout_hint(products, grid, [columns(3)]),
-      layout_hint(orders, list, [show_status_badge]),
-      layout_hint(messages, conversation, [])
+    filter_status([
+        type(atom),
+        options([all, reading, completed, wishlist])
     ])
-  ])
-).
+]).
+```
+
+**Key concepts:**
+- `type(model)` — the variable references an instance of a model (facts are instances of models)
+- `source(book)` — specifies which model type this state variable holds
+- State is **Avatar-only** — controls UI, not Brain logic
+
+### Components
+
+Components are reusable UI building blocks. They define **what CAN be rendered**.
+
+```prolog
+% List component
+component(books, [
+    title("My Books"),
+    description("Browse and manage your collection"),
+    type(list),
+    source(book),
+    fields([
+        field(title, string, "Title"),
+        field(author, string, "Author"),
+        field(status, atom, "Status")
+    ]),
+    actions([
+        action(add_book, "Add Book", plus)
+    ])
+]).
+
+% Detail component (depends on state)
+component(book_detail, [
+    title("Book Details"),
+    type(detail),
+    source(book),
+    context(selected_book),    % Shows when selected_book is set
+    fields([
+        field(title, string, "Title"),
+        field(author, string, "Author"),
+        field(description, text, "Description"),
+        field(cover, image, "Cover")
+    ]),
+    actions([
+        action(edit_book, "Edit", pencil),
+        action(delete_book, "Delete", trash, [variant(danger)])
+    ])
+]).
+```
+
+**Component properties:**
+- `name` — Unique identifier
+- `title` — Human-readable title
+- `type` — Component type (list, grid, detail, form, etc.)
+- `source` — Data model for this component
+- `context` — Optional state variable this component depends on
+- `fields` — Field definitions (what to display)
+- `actions` — Available actions in this component
+
+**Component types:**
+| Type | Description |
+|------|-------------|
+| `list` | Vertical list of items |
+| `grid` | Grid of cards |
+| `detail` | Single item detail view |
+| `form` | Input form for creating/editing |
+| `dashboard` | Multi-widget dashboard |
+
+### Views
+
+Views are **compositions of components**. They suggest which components to show together.
+
+- **One default view** — shown when no specific state is active
+- **Other views** — require a state variable to become active
+
+```prolog
+% Default view: just the list
+view(home, [
+    title("Home"),
+    is_default(true),
+    components([books])
+]).
+
+% View activated when a book is selected
+view(book_view, [
+    title("Book Details"),
+    context(selected_book),           % Activates when selected_book is set
+    components([books, book_detail]), % Show both components
+    layout(split)                     % Side by side
+]).
+```
+
+**View properties:**
+- `name` — Unique identifier
+- `title` — Human-readable title
+- `context` — State variable that activates this view (not required for default)
+- `components` — List of component names to display
+- `layout` — How to arrange components
+- `is_default` — Whether this is the default view (exactly one)
+
+**View layouts:**
+| Layout | Description |
+|--------|-------------|
+| `single` | One component fills the space |
+| `split` | Components side by side |
+| `tabs` | Components as tabs |
+| `stack` | Components stacked vertically |
+
+### Brand Identity
+
+```prolog
+brand([
+    name("My Bookshelf"),
+    logo("https://example.com/logo.png"),
+    primary_color("#2563eb"),
+    secondary_color("#1e40af"),
+    accent_color("#f59e0b"),
+    tone(friendly),
+    greetings([
+        "What would you like to read today?",
+        "Welcome back! Ready to explore?",
+        "Your bookshelf awaits!"
+    ])
+]).
+```
+
+### Full Presentation Example
+
+```prolog
+% Brand identity
+brand([
+    name("My Bookshelf"),
+    primary_color("#2563eb"),
+    greetings(["What would you like to read?"])
+]).
+
+% State schema - UI state for Avatar (controls which views/components are shown)
+state([
+    selected_book([type(model), source(book)])
+]).
+
+% Components
+component(books, [
+    title("My Books"),
+    type(list),
+    source(book),
+    fields([
+        field(title, string, "Title"),
+        field(author, string, "Author"),
+        field(status, atom, "Status")
+    ]),
+    actions([action(add_book, "Add Book", plus)])
+]).
+
+component(book_detail, [
+    title("Book Details"),
+    type(detail),
+    source(book),
+    context(selected_book),
+    fields([
+        field(title, string, "Title"),
+        field(author, string, "Author"),
+        field(description, text, "Description")
+    ]),
+    actions([
+        action(edit_book, "Edit", pencil),
+        action(delete_book, "Delete", trash, [variant(danger)])
+    ])
+]).
+
+% Views
+view(home, [
+    title("Home"),
+    is_default(true),
+    components([books])
+]).
+
+view(book_view, [
+    title("Book Details"),
+    context(selected_book),
+    components([books, book_detail]),
+    layout(split)
+]).
 ```
 
 ### What Presentation Hints Can Define
 
 | Category | Examples | Avatar Behavior |
 |----------|----------|-----------------|
-| **Brand** | Logo, colors, name, tone | Always respected (part of agent identity) |
-| **Home** | Welcome message, featured sections | Shown unless user has custom shortcuts |
-| **Layout hints** | Grid vs list for products | Used as default, user can override |
-| **Onboarding** | First-time user flow | Shown once, then remembered |
+| **Brand** | Logo, colors, name, tone, greetings | Always respected (part of agent identity) |
+| **State** | UI state schema | Avatar manages state locally (not sent to Brain) |
+| **Components** | UI building blocks | Avatar renders based on state |
+| **Views** | Component compositions | Avatar activates based on state |
+| **Layout hints** | Grid vs list suggestions | Used as default, user can override |
 
 ### What Presentation Hints Cannot Define
 
@@ -442,6 +625,80 @@ home([
 
 ## 9. Future Considerations
 
+### Multi-View Merge Logic (v2+)
+
+**Current implementation (v1):** The Avatar displays exactly one view at a time, selected by the presentation engine based on which context variables are set.
+
+**Future enhancement (v2+):** Multiple views could be active simultaneously with a "merge logic" for combining their components.
+
+#### Use Cases for Multi-View
+
+1. **Master-Detail with Sidebar** — Show a navigation list, a main list, and detail panel all at once
+2. **Dashboard with Overlays** — Dashboard view with a form modal overlaid
+3. **Split-Screen Editing** — Two related detail views side by side
+
+#### Merge Logic Design
+
+When multiple views are active:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    MULTI-VIEW MERGE LOGIC                       │
+│                                                                 │
+│  View A (active)          View B (active)                       │
+│  components: [a, b]       components: [b, c]                    │
+│       │                         │                               │
+│       └──────────┬──────────────┘                               │
+│                  │                                              │
+│                  ▼                                              │
+│           ┌─────────────┐                                       │
+│           │  MERGE STEP │                                       │
+│           └─────────────┘                                       │
+│                  │                                              │
+│         1. Union of components: [a, b, c]                       │
+│         2. Deduplicate: component 'b' appears once              │
+│         3. Priority ordering: views have priority weight        │
+│         4. Layout merging: combine layout hints                 │
+│                  │                                              │
+│                  ▼                                              │
+│           Final render: [a, b, c] with merged layout            │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Merge Rules
+
+| Rule | Description |
+|------|-------------|
+| **Component deduplication** | Same component in multiple views is rendered once |
+| **Priority ordering** | Higher-priority views' components come first |
+| **Layout combination** | `split` + `stack` → `split` with stacked panels |
+| **Conflict resolution** | Most specific view wins for conflicting hints |
+
+#### Activation Logic
+
+```prolog
+% View activates when ALL its contexts are set
+view(book_view, [
+    context([selected_book, filter_status]),  % Both must be set
+    components([books, book_detail])
+]).
+
+% OR-style activation (any context activates)
+view(search_results, [
+    context_any([search_query, filter_active]),  % Either activates
+    components([search_list])
+]).
+```
+
+#### Implementation Notes
+
+The presentation engine will need:
+1. **View scoring** — Calculate activation score based on how many contexts match
+2. **Priority weights** — Views can have explicit priority for ordering
+3. **Layout resolver** — Combine multiple layout hints into final arrangement
+4. **Component allocator** — Assign components to layout regions
+
 ### Voice and Non-Visual Interfaces
 
 The layered architecture supports non-visual interfaces:
@@ -461,17 +718,129 @@ When connected to multiple agents:
 
 Future enhancement: Users could define custom themes that override builder brand colors while maintaining accessibility and readability.
 
+### Component Library Extensions
+
+The Avatar has a fixed UI component library, but future versions may support:
+
+1. **Custom component registration** — Agent-specific components (with security sandboxing)
+2. **Component variants** — Same type with different visual styles
+3. **Animated transitions** — Smooth view switching animations
+4. **Responsive layouts** — Automatic layout adjustment based on screen size
+
 ---
 
-## 10. Summary
+## 10. Presentation Layer Implementation
+
+The Avatar implements the view rendering through a **presentation layer** with the following components:
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    PRESENTATION LAYER                           │
+│                                                                 │
+│  ┌─────────────────┐     ┌──────────────────┐                  │
+│  │ PresentationState│ ─▶ │ PresentationEngine│                  │
+│  │  (UI state)      │     │  (view selection) │                  │
+│  └─────────────────┘     └────────┬─────────┘                  │
+│                                   │                             │
+│                                   ▼                             │
+│                         ┌─────────────────┐                     │
+│                         │  ViewRenderer   │                     │
+│                         │  (orchestrates) │                     │
+│                         └────────┬────────┘                     │
+│                                  │                              │
+│          ┌───────────────────────┴───────────────────────┐      │
+│          ▼                       ▼                       ▼      │
+│  ┌─────────────┐         ┌─────────────┐         ┌───────────┐ │
+│  │ListComponent│         │GridComponent│         │DetailComp │ │
+│  └─────────────┘         └─────────────┘         └───────────┘ │
+│          │                       │                       │      │
+│          └───────────────────────┴───────────────────────┘      │
+│                                  │                              │
+│                          ComponentRegistry                      │
+│                       (type → React component)                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+| Component | Purpose |
+|-----------|---------|
+| **PresentationStateManager** | Manages UI state variables (separate from Brain state) |
+| **PresentationEngine** | Selects which view to display based on current state |
+| **ComponentRegistry** | Maps component types to React components |
+| **ViewRenderer** | Orchestrates rendering, ties everything together |
+
+### Component Type Mapping
+
+| Type | React Component | Description |
+|------|-----------------|-------------|
+| `list` | ListComponent | Vertical list of items with fields |
+| `grid` | GridComponent | Responsive card grid |
+| `detail` | DetailComponent | Single item detail view |
+| `form` | FormComponent | Input form for creating/editing |
+| `dashboard` | DashboardComponent | Summary widgets and stats |
+| `chat` | ChatComponent | Conversational interface |
+
+### Usage Example
+
+```tsx
+import { ViewRenderer } from '@uhum/avatar';
+
+function App() {
+  const { state } = useAvatar();
+  
+  return (
+    <ViewRenderer
+      presentation={state.dossier?.presentation}
+      facts={state.facts}
+      onIntent={(intent, params) => avatar.sendIntention(intent, params)}
+    />
+  );
+}
+```
+
+### State Flow
+
+1. **Dossier loads** → Engine loads views and components
+2. **State initializes** → All state variables start as `null`
+3. **User selects item** → State variable set (e.g., `selected_book`)
+4. **Engine re-evaluates** → Finds view matching new state
+5. **ViewRenderer updates** → Renders new view's components
+
+---
+
+## 11. Summary
 
 | Aspect | Responsibility |
 |--------|----------------|
 | **What data exists** | Brain (semantic facts) |
-| **What the agent looks like** | Dossier (presentation hints) |
+| **What can be rendered** | Dossier (components) |
+| **How to compose UI** | Dossier (views) |
+| **What controls UI state** | Dossier (state schema) |
+| **What the agent looks like** | Dossier (brand) |
 | **How user prefers to see things** | Avatar (user preferences) |
 | **Final rendering decision** | Avatar (combining all layers) |
 
-**Priority:** User > Builder > Avatar Defaults
+### Presentation Concepts
 
-**Key Principle:** The Brain never knows or cares about UI. The Avatar is smart enough to make good rendering decisions while respecting both builder intent and user sovereignty.
+| Concept | Description | Scope |
+|---------|-------------|-------|
+| **Brand** | Visual identity, greetings | Unique (last wins) |
+| **State** | UI state schema (Avatar-only) | Unique (last wins) |
+| **Component** | Reusable UI building block | Multiple |
+| **View** | Composition of components | Multiple (one default) |
+
+### Priority
+
+**User > Builder > Avatar Defaults**
+
+### Key Principles
+
+1. **Brain is pure semantic** — never sends UI instructions
+2. **State is Avatar-only** — controls which views/components are shown, NOT Brain state
+3. **Components are building blocks** — reusable, can depend on state
+4. **Views are compositions** — suggest which components to show together
+5. **One default view** — other views require state to activate
+6. **User is sovereign** — preferences always override builder hints

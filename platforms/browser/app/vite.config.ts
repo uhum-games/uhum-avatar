@@ -20,9 +20,9 @@ function uhumBanner(): Plugin {
     │                                                              │
     │   👤 UHUM AVATAR                                             │
     │                                                              │
-    │   Mode:      ${mockMode ? 'Mock (local development)'.padEnd(45) : 'Production'.padEnd(45)}│
-    │   Agent ID:  ${(mockMode ? mockAgentId : agentId).padEnd(45)}│
-    ${mockMode ? `│   Mock URL:  ${mockWsUrl.padEnd(45)}│` : '│                                                              │'}
+    │   Mode:      ${mockMode ? 'Mock (local development)'.padEnd(48) : 'Production'.padEnd(48)}│
+    │   Agent ID:  ${(mockMode ? mockAgentId : agentId).padEnd(48)}│
+    ${mockMode ? `│   Mock URL:  ${mockWsUrl.padEnd(48)}│` : '│                                                              │'}
     │                                                              │
     │   Build for production:                                      │
     │   VITE_AGENT_ID=your.agent pnpm build                        │

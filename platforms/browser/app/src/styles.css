@@ -7,6 +7,9 @@
  * 2. User preferences (theme, density, etc.)
  */
 
+/* Import presentation component styles - relative path to lib */
+@import '../../lib/src/presentation/components/styles.css';
+
 :root {
   /* Base colors - can be overridden by agent branding */
   --avatar-bg: #0a0a0f;
@@ -165,11 +168,6 @@ body {
   padding: var(--avatar-spacing-lg);
 }
 
-.avatar-content {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
 .avatar-facts {
   font-family: var(--avatar-font-mono);
   font-size: 0.875rem;
@@ -184,10 +182,102 @@ body {
 
 .avatar-empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
+  gap: var(--avatar-spacing-md);
   color: var(--avatar-text-muted);
+}
+
+.avatar-empty-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--avatar-spacing-sm);
+}
+
+.avatar-empty-icon {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.avatar-empty-text {
+  font-size: 0.875rem;
+}
+
+/* ViewRenderer styles */
+.avatar-view-renderer {
+  padding: var(--avatar-spacing-md);
+  min-height: 200px;
+}
+
+/* Content area when showing view */
+.avatar-content {
+  max-width: 900px;
+  margin: 0 auto;
+  min-height: 300px;
+}
+
+.avatar-facts-header {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--avatar-text-muted);
+  margin-bottom: var(--avatar-spacing-sm);
+}
+
+/* View debug info */
+.uhum-view-debug {
+  background: var(--avatar-surface);
+  border: 1px solid var(--avatar-border);
+  border-radius: var(--avatar-radius-md);
+  padding: var(--avatar-spacing-sm);
+  margin-bottom: var(--avatar-spacing-md);
+  font-family: var(--avatar-font-mono);
+  font-size: 0.75rem;
+  color: var(--avatar-text-muted);
+}
+
+.uhum-view-debug__view,
+.uhum-view-debug__components,
+.uhum-view-debug__state {
+  margin: var(--avatar-spacing-xs) 0;
+}
+
+/* Empty view state */
+.uhum-view-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--avatar-spacing-xl);
+  color: var(--avatar-text-muted);
+}
+
+.uhum-view-empty__icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--avatar-spacing-sm);
+  opacity: 0.6;
+}
+
+.uhum-view-empty__text {
+  font-size: 0.875rem;
+}
+
+/* Override presentation component colors for dark theme */
+.avatar-view-renderer {
+  --uhum-bg: var(--avatar-surface);
+  --uhum-bg-secondary: var(--avatar-surface-elevated);
+  --uhum-bg-hover: rgba(255, 255, 255, 0.05);
+  --uhum-bg-selected: rgba(99, 102, 241, 0.2);
+  --uhum-border: var(--avatar-border);
+  --uhum-text: var(--avatar-text);
+  --uhum-text-secondary: var(--avatar-text-muted);
+  --uhum-text-muted: rgba(255, 255, 255, 0.4);
+  --uhum-primary: var(--avatar-primary);
+  --uhum-primary-hover: var(--avatar-primary-hover);
 }
 
 /* Messages */

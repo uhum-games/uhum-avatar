@@ -36,4 +36,16 @@ export { Term, termToString, parseTerm, encodeFrame, decodeFrame, parseMessage, 
 export { loadWasm, isWasmLoaded, isWasmSupported, } from './wasm';
 // Directory service
 export { DirectoryClient, createMockDirectory, DirectoryError, } from './directory';
+// Presentation layer (view rendering)
+export { 
+// State management
+PresentationStateManager, createPresentationStateManager, 
+// View selection engine
+PresentationEngine, createPresentationEngine, filterFactsBySource, getContextItem, 
+// Component registry
+registerComponent, getComponentRenderer, hasComponentRenderer, getRegisteredTypes, renderComponent, 
+// UI Components
+ListComponent, GridComponent, DetailComponent, FormComponent, DashboardComponent, ChatComponent, 
+// Main renderer
+ViewRenderer, } from './presentation';
 //# sourceMappingURL=index.js.map

@@ -98,3 +98,40 @@ export {
   type AgentDossier as DirectoryAgentDossier,
   type AgentIntent as DirectoryAgentIntent,
 } from './directory';
+
+// Presentation layer (view rendering)
+export {
+  // State management
+  PresentationStateManager,
+  createPresentationStateManager,
+  type PresentationState,
+  type PresentationValue,
+  
+  // View selection engine
+  PresentationEngine,
+  createPresentationEngine,
+  filterFactsBySource,
+  getContextItem,
+  type ViewSelectionResult,
+  
+  // Component registry
+  registerComponent,
+  getComponentRenderer,
+  hasComponentRenderer,
+  getRegisteredTypes,
+  renderComponent,
+  type ComponentRenderProps,
+  type ComponentRenderer,
+  
+  // UI Components
+  ListComponent,
+  GridComponent,
+  DetailComponent,
+  FormComponent,
+  DashboardComponent,
+  ChatComponent,
+  
+  // Main renderer
+  ViewRenderer,
+  type ViewRendererProps,
+} from './presentation';

@@ -612,9 +612,6 @@ function parseIdentity(term, defaultId, defaultVersion) {
                     identity.tags = item.args[0].items.map(t => extractString(t) || '').filter(Boolean);
                 }
                 break;
-            case 'welcome_message':
-                identity.welcomeMessage = value || undefined;
-                break;
         }
     }
     return identity;
@@ -690,6 +687,14 @@ function parseParams(term) {
 }
 /**
  * Parse presentation section.
+ *
+ * Handles:
+ * - brand([...]) - Visual identity
+ * - state([...]) - Global state schema
+ * - components([component(...), ...]) - UI building blocks
+ * - views([view(...), ...]) - Composition of components
+ * - home([...]) - Landing page configuration
+ * - layouts([layout_hint(...), ...]) - Layout hints
  */
 function parsePresentation(term) {
     if (!term || term.type !== 'list')
@@ -702,11 +707,17 @@ function parsePresentation(term) {
             case 'brand':
                 presentation.brand = parseBrand(item.args[0]);
                 break;
-            case 'home':
-                presentation.home = parseHome(item.args[0]);
+            case 'state':
+                presentation.state = parseState(item.args[0]);
+                break;
+            case 'components':
+                presentation.components = parseComponents(item.args[0]);
                 break;
             case 'views':
                 presentation.views = parseViews(item.args[0]);
+                break;
+            case 'home':
+                presentation.home = parseHome(item.args[0]);
                 break;
             case 'layouts':
                 presentation.layouts = parseLayouts(item.args[0]);
@@ -757,6 +768,263 @@ function parseBrand(term) {
     }
     return Object.keys(brand).length > 0 ? brand : undefined;
 }
+// =============================================================================
+// State Parsing
+// =============================================================================
+/**
+ * Parse UI state schema.
+ *
+ * State defines which views and components are shown in the Avatar.
+ * This is Avatar-only state — it does NOT flow to the Brain.
+ *
+ * Format:
+ * ```prolog
+ * state([
+ *     selected_book([
+ *         type(model),
+ *         source(book),
+ *         description("Currently selected book")
+ *     ])
+ * ])
+ * ```
+ */
+function parseState(term) {
+    if (!term || term.type !== 'list')
+        return undefined;
+    const variables = [];
+    for (const item of term.items) {
+        if (item.type !== 'compound')
+            continue;
+        // Each item is: variable_name([type(...), source(...), ...])
+        const name = item.functor;
+        const variable = { name, type: 'unknown' };
+        const propsList = item.args[0];
+        if (propsList?.type === 'list') {
+            for (const prop of propsList.items) {
+                if (prop.type !== 'compound')
+                    continue;
+                switch (prop.functor) {
+                    case 'type':
+                        variable.type = extractString(prop.args[0]) || 'unknown';
+                        break;
+                    case 'source':
+                        variable.source = extractString(prop.args[0]) || undefined;
+                        break;
+                    case 'description':
+                        variable.description = extractString(prop.args[0]) || undefined;
+                        break;
+                }
+            }
+        }
+        variables.push(variable);
+    }
+    return variables.length > 0 ? { variables } : undefined;
+}
+// =============================================================================
+// Component Parsing
+// =============================================================================
+/**
+ * Parse component definitions.
+ *
+ * Format:
+ * ```prolog
+ * components([
+ *     component(books, [
+ *         title("My Books"),
+ *         type(list),
+ *         source(book),
+ *         fields([field(title, string, "Title"), ...]),
+ *         actions([action(add_book, "Add Book", plus)])
+ *     ]),
+ *     component(book_detail, [
+ *         title("Book Details"),
+ *         type(detail),
+ *         source(book),
+ *         context(selected_book),
+ *         fields([...]),
+ *         actions([...])
+ *     ])
+ * ])
+ * ```
+ */
+function parseComponents(term) {
+    if (!term || term.type !== 'list')
+        return undefined;
+    const components = [];
+    for (const item of term.items) {
+        if (item.type !== 'compound' || item.functor !== 'component')
+            continue;
+        const name = extractString(item.args[0]);
+        if (!name)
+            continue;
+        const component = { name };
+        const propsList = item.args[1];
+        if (propsList?.type === 'list') {
+            for (const prop of propsList.items) {
+                if (prop.type !== 'compound')
+                    continue;
+                switch (prop.functor) {
+                    case 'title':
+                        component.title = extractString(prop.args[0]) || undefined;
+                        break;
+                    case 'description':
+                        component.description = extractString(prop.args[0]) || undefined;
+                        break;
+                    case 'type':
+                        component.type = extractString(prop.args[0]) || undefined;
+                        break;
+                    case 'source':
+                        component.source = extractString(prop.args[0]) || undefined;
+                        break;
+                    case 'context':
+                        // context(selected_book) - the context variable this component depends on
+                        component.context = extractString(prop.args[0]) || undefined;
+                        break;
+                    case 'icon':
+                        component.icon = extractString(prop.args[0]) || undefined;
+                        break;
+                    case 'is_default':
+                        component.isDefault = prop.args[0]?.type === 'atom' && prop.args[0].value === 'true';
+                        break;
+                    case 'fields':
+                        component.fields = parseComponentFields(prop.args[0]);
+                        break;
+                    case 'actions':
+                        component.actions = parseComponentActions(prop.args[0]);
+                        break;
+                    case 'filters':
+                        component.filters = parseComponentFilters(prop.args[0]);
+                        break;
+                    case 'default_sort':
+                        component.defaultSort = parseDefaultSort(prop.args[0]);
+                        break;
+                }
+            }
+        }
+        components.push(component);
+    }
+    return components.length > 0 ? components : undefined;
+}
+/**
+ * Parse component fields.
+ *
+ * Format: fields([field(name, type, "Label"), ...])
+ */
+function parseComponentFields(term) {
+    if (!term || term.type !== 'list')
+        return undefined;
+    const fields = [];
+    for (const item of term.items) {
+        if (item.type !== 'compound' || item.functor !== 'field')
+            continue;
+        const name = extractString(item.args[0]);
+        const type = (extractString(item.args[1]) || 'string');
+        const label = extractString(item.args[2]) || name || '';
+        if (name) {
+            const field = { name, type, label };
+            // Parse optional properties from 4th argument if present
+            const optsList = item.args[3];
+            if (optsList?.type === 'list') {
+                for (const opt of optsList.items) {
+                    if (opt.type !== 'compound')
+                        continue;
+                    switch (opt.functor) {
+                        case 'sortable':
+                            field.sortable = opt.args[0]?.type === 'atom' && opt.args[0].value === 'true';
+                            break;
+                        case 'filterable':
+                            field.filterable = opt.args[0]?.type === 'atom' && opt.args[0].value === 'true';
+                            break;
+                        case 'width':
+                            field.width = extractString(opt.args[0]) || undefined;
+                            break;
+                        case 'reference':
+                            // For model type fields: reference to another model
+                            field.reference = extractString(opt.args[0]) || undefined;
+                            break;
+                    }
+                }
+            }
+            fields.push(field);
+        }
+    }
+    return fields.length > 0 ? fields : undefined;
+}
+/**
+ * Parse component actions.
+ *
+ * Format: actions([action(intent, "Label", icon, [options]), ...])
+ */
+function parseComponentActions(term) {
+    if (!term || term.type !== 'list')
+        return undefined;
+    const actions = [];
+    for (const item of term.items) {
+        if (item.type !== 'compound' || item.functor !== 'action')
+            continue;
+        const intent = extractString(item.args[0]);
+        const label = extractString(item.args[1]) || intent || '';
+        if (intent) {
+            const action = { intent, label };
+            // Optional icon (3rd arg)
+            if (item.args[2]) {
+                action.icon = extractString(item.args[2]) || undefined;
+            }
+            // Parse optional properties from 4th argument if present
+            const optsList = item.args[3];
+            if (optsList?.type === 'list') {
+                for (const opt of optsList.items) {
+                    if (opt.type !== 'compound')
+                        continue;
+                    switch (opt.functor) {
+                        case 'variant':
+                            action.variant = extractString(opt.args[0]) || undefined;
+                            break;
+                        case 'requires_selection':
+                            action.requiresSelection = opt.args[0]?.type === 'atom' && opt.args[0].value === 'true';
+                            break;
+                    }
+                }
+            }
+            actions.push(action);
+        }
+    }
+    return actions.length > 0 ? actions : undefined;
+}
+/**
+ * Parse component filters.
+ *
+ * Format: filters([filter(field, type, "Label", [options]), ...])
+ */
+function parseComponentFilters(term) {
+    if (!term || term.type !== 'list')
+        return undefined;
+    const filters = [];
+    for (const item of term.items) {
+        if (item.type !== 'compound' || item.functor !== 'filter')
+            continue;
+        const field = extractString(item.args[0]);
+        const type = (extractString(item.args[1]) || 'select');
+        if (field) {
+            const filter = { field, type };
+            // Optional label (3rd arg)
+            if (item.args[2]) {
+                filter.label = extractString(item.args[2]) || undefined;
+            }
+            // Optional options list (4th arg)
+            if (item.args[3]?.type === 'list') {
+                filter.options = item.args[3].items
+                    .map(t => extractString(t))
+                    .filter((s) => s !== null);
+            }
+            filters.push(filter);
+        }
+    }
+    return filters.length > 0 ? filters : undefined;
+}
+// =============================================================================
+// Home Section Parsing
+// =============================================================================
 /**
  * Parse home sections.
  */
@@ -800,6 +1068,26 @@ function parseHome(term) {
 }
 /**
  * Parse view definitions.
+ *
+ * Views are compositions of components. They define which components
+ * to show together and can be activated by context.
+ *
+ * Format:
+ * ```prolog
+ * views([
+ *     view(home, [
+ *         title("Home"),
+ *         is_default(true),
+ *         components([books])
+ *     ]),
+ *     view(book_view, [
+ *         title("Book Details"),
+ *         context(selected_book),
+ *         components([books, book_detail]),
+ *         layout(split)
+ *     ])
+ * ])
+ * ```
  */
 function parseViews(term) {
     if (!term || term.type !== 'list')
@@ -824,29 +1112,27 @@ function parseViews(term) {
                     case 'description':
                         view.description = extractString(prop.args[0]) || undefined;
                         break;
-                    case 'type':
-                        view.type = extractString(prop.args[0]) || undefined;
+                    case 'context':
+                        // Context variable that activates this view
+                        view.context = extractString(prop.args[0]) || undefined;
                         break;
-                    case 'source':
-                        view.source = extractString(prop.args[0]) || undefined;
+                    case 'components':
+                        // List of component names to show in this view
+                        if (prop.args[0]?.type === 'list') {
+                            view.components = prop.args[0].items
+                                .map(t => extractString(t))
+                                .filter((s) => s !== null);
+                        }
+                        break;
+                    case 'layout':
+                        // How to arrange components: single, split, tabs, stack
+                        view.layout = extractString(prop.args[0]) || undefined;
                         break;
                     case 'icon':
                         view.icon = extractString(prop.args[0]) || undefined;
                         break;
                     case 'is_default':
                         view.isDefault = prop.args[0]?.type === 'atom' && prop.args[0].value === 'true';
-                        break;
-                    case 'columns':
-                        view.columns = parseViewColumns(prop.args[0]);
-                        break;
-                    case 'actions':
-                        view.actions = parseViewActions(prop.args[0]);
-                        break;
-                    case 'filters':
-                        view.filters = parseViewFilters(prop.args[0]);
-                        break;
-                    case 'default_sort':
-                        view.defaultSort = parseDefaultSort(prop.args[0]);
                         break;
                 }
             }

@@ -1,4 +1,5 @@
-import type { useAvatar } from '@uhum/avatar-lib';
+import { useCallback } from 'react';
+import { useAvatar, ViewRenderer } from '@uhum/avatar-lib';
 
 interface ContentAreaProps {
   state: ReturnType<typeof useAvatar>['state'];
@@ -7,11 +8,23 @@ interface ContentAreaProps {
 /**
  * Main content area that renders based on state.
  * 
- * Note: The primary interaction happens in the chat panel.
- * This area is for displaying rich content, data visualizations,
- * and view-specific UI that the agent sends.
+ * Uses the ViewRenderer to display views and components based on:
+ * - The dossier's presentation definition (views, components, state schema)
+ * - Current facts from the Brain
+ * - User interactions (item selection, etc.)
  */
 export function ContentArea({ state }: ContentAreaProps) {
+  const { client } = useAvatar();
+
+  // Handle intents from components (e.g., button clicks)
+  const handleIntent = useCallback(
+    (intent: string, params?: Record<string, unknown>) => {
+      console.log('[ContentArea] Intent triggered:', intent, params);
+      client.sendIntention(intent, params ?? {});
+    },
+    [client]
+  );
+
   // Show loading overlay
   if (state.loading) {
     return (
@@ -22,26 +35,44 @@ export function ContentArea({ state }: ContentAreaProps) {
     );
   }
 
-  // Show message if present (typically feedback messages)
-  if (state.message) {
+  // Check if we have presentation data
+  const viewsCount = state.dossier?.presentation?.views?.length ?? 0;
+  const hasPresentation = viewsCount > 0;
+  
+  console.log('[ContentArea] Rendering:', {
+    hasPresentation,
+    viewsCount,
+    views: state.dossier?.presentation?.views,
+    components: state.dossier?.presentation?.components,
+    factsCount: state.facts.length,
+  });
+
+  // Render using ViewRenderer if we have presentation data
+  if (hasPresentation) {
     return (
-      <div className={`avatar-message avatar-message-${state.message.messageType}`}>
-        {state.message.text}
+      <div className="avatar-content">
+        <ViewRenderer
+          presentation={state.dossier?.presentation}
+          facts={state.facts}
+          onIntent={handleIntent}
+          debug={true} // Enable debug for development
+          className="avatar-view-renderer"
+        />
       </div>
     );
   }
 
-  // Show facts/data when available
+  // Fallback: Show facts as JSON if no presentation defined
   if (state.facts.length > 0) {
     return (
       <div className="avatar-content">
+        <div className="avatar-facts-header">Data (no views defined)</div>
         <pre className="avatar-facts">{JSON.stringify(state.facts, null, 2)}</pre>
       </div>
     );
   }
 
   // Empty state - show agent branding or neutral background
-  // The chat panel handles the conversation prompt
   const brand = state.dossier?.presentation?.brand;
   
   return (
@@ -52,6 +83,12 @@ export function ContentArea({ state }: ContentAreaProps) {
           alt={brand.name || 'Agent'} 
           className="avatar-empty-logo"
         />
+      )}
+      {!brand?.logo && (
+        <div className="avatar-empty-placeholder">
+          <span className="avatar-empty-icon">📚</span>
+          <span className="avatar-empty-text">Ready</span>
+        </div>
       )}
     </div>
   );

@@ -32,9 +32,9 @@ export interface AgentDossier {
             name?: string;
             logo?: string;
             primaryColor?: string;
+            greetings?: string[];
         };
         home?: {
-            welcomeMessage?: string;
             featuredSections?: string[];
         };
         layoutHints?: Record<string, string>;

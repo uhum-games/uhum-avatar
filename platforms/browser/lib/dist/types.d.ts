@@ -80,7 +80,228 @@ export interface DossierHomeSection {
     actions?: string[];
 }
 /**
- * Column definition for list/grid views.
+ * Field types supported by components.
+ *
+ * - `string` - Text value
+ * - `number` - Numeric value
+ * - `atom` - Enumerated/status value
+ * - `text` - Long text (multiline)
+ * - `datetime` - Date and time
+ * - `date` - Date only
+ * - `boolean` - True/false
+ * - `model` - Reference to another model (foreign key)
+ */
+export type DossierFieldType = 'string' | 'number' | 'atom' | 'text' | 'datetime' | 'date' | 'boolean' | 'model';
+/**
+ * Field definition for components.
+ *
+ * Fields define the data structure displayed/edited by a component.
+ */
+export interface DossierField {
+    /** Field name (matches model property) */
+    name: string;
+    /** Field data type */
+    type: DossierFieldType;
+    /** Human-readable label */
+    label: string;
+    /** Whether this field is sortable in list views */
+    sortable?: boolean;
+    /** Whether this field is filterable */
+    filterable?: boolean;
+    /** Display width hint */
+    width?: string;
+    /** For model type: the referenced model name */
+    reference?: string;
+}
+/**
+ * Action definition for components.
+ *
+ * Actions are buttons/links that trigger intents.
+ */
+export interface DossierComponentAction {
+    /** Intent to trigger */
+    intent: string;
+    /** Button/link label */
+    label: string;
+    /** Icon name */
+    icon?: string;
+    /** Visual variant */
+    variant?: 'primary' | 'secondary' | 'danger';
+    /** Whether this action requires a selected item */
+    requiresSelection?: boolean;
+}
+/**
+ * Filter definition for components.
+ */
+export interface DossierComponentFilter {
+    field: string;
+    type: 'select' | 'search' | 'date' | 'range';
+    label?: string;
+    options?: string[];
+}
+/**
+ * Component types supported by the Avatar.
+ *
+ * - `list` - Vertical list of items
+ * - `grid` - Grid of cards
+ * - `detail` - Single item detail view
+ * - `form` - Input form for creating/editing
+ * - `dashboard` - Multi-widget dashboard
+ * - `chat` - Chat-focused component
+ */
+export type DossierComponentType = 'list' | 'grid' | 'detail' | 'form' | 'dashboard' | 'chat';
+/**
+ * Component definition from dossier presentation.
+ *
+ * A Component is a reusable UI building block. Components can:
+ * - Display data from a model (source)
+ * - Depend on context variables (context)
+ * - Have actions that trigger intents
+ *
+ * Multiple components can be rendered simultaneously (e.g., a list of books
+ * alongside the detail view of the selected book).
+ *
+ * @example
+ * ```prolog
+ * component(books, [
+ *     title("My Books"),
+ *     type(list),
+ *     source(book),
+ *     fields([field(title, string, "Title"), ...]),
+ *     actions([action(add_book, "Add Book", plus)])
+ * ]).
+ *
+ * component(book_detail, [
+ *     title("Book Details"),
+ *     type(detail),
+ *     source(book),
+ *     context(selected_book),
+ *     fields([...]),
+ *     actions([action(edit_book, "Edit", pencil)])
+ * ]).
+ * ```
+ */
+export interface DossierComponent {
+    /** Unique component identifier */
+    name: string;
+    /** Human-readable title */
+    title?: string;
+    /** Component description */
+    description?: string;
+    /** Component type - determines rendering style */
+    type?: DossierComponentType;
+    /** Data model for this component (fact type) */
+    source?: string;
+    /** Context variable this component depends on */
+    context?: string;
+    /** Field definitions */
+    fields?: DossierField[];
+    /** Available actions */
+    actions?: DossierComponentAction[];
+    /** Filter definitions */
+    filters?: DossierComponentFilter[];
+    /** Default sort configuration */
+    defaultSort?: {
+        field: string;
+        direction: 'asc' | 'desc';
+    };
+    /** Whether this is the default/home component */
+    isDefault?: boolean;
+    /** Icon for navigation */
+    icon?: string;
+}
+/**
+ * State variable definition.
+ *
+ * State variables define the **UI state** for the Avatar presentation layer.
+ * This is Avatar-only state — it controls which views and components are shown.
+ *
+ * **Important:** This is NOT Brain state and does NOT flow to the Brain.
+ * It's purely for UI behavior defined by the agent author.
+ *
+ * @example
+ * ```prolog
+ * state([
+ *     selected_book([
+ *         type(model),
+ *         source(book),
+ *         description("Currently selected book for detail view")
+ *     ])
+ * ]).
+ * ```
+ */
+export interface DossierStateVariable {
+    /** Variable name (e.g., "selected_book") */
+    name: string;
+    /** Variable type (usually "model" for references) */
+    type: string;
+    /** For model type: the model this variable references */
+    source?: string;
+    /** Human-readable description */
+    description?: string;
+}
+/**
+ * State schema from dossier presentation.
+ *
+ * Defines the UI state variables for the Avatar presentation layer.
+ * Controls which views and components are shown based on user interactions.
+ *
+ * **Note:** This is Avatar-only state, not Brain state.
+ */
+export interface DossierState {
+    /** Available state variables */
+    variables: DossierStateVariable[];
+}
+/**
+ * View definition from dossier presentation.
+ *
+ * A View is a composition/suggestion of which components to show together.
+ * Views represent different "pages" or "screens" in the Avatar.
+ *
+ * - **One default view** - shown when no specific context is active
+ * - **Other views** - require a context to become active
+ *
+ * When context changes, the Avatar can switch to a different view that
+ * matches that context.
+ *
+ * @example
+ * ```prolog
+ * % Default view - shows the books list component
+ * view(home, [
+ *     title("Home"),
+ *     is_default(true),
+ *     components([books])
+ * ]).
+ *
+ * % View activated when a book is selected
+ * view(book_view, [
+ *     title("Book Details"),
+ *     context(selected_book),
+ *     components([books, book_detail])
+ * ]).
+ * ```
+ */
+export interface DossierView {
+    /** Unique view identifier */
+    name: string;
+    /** Human-readable title */
+    title?: string;
+    /** View description */
+    description?: string;
+    /** Context variable that activates this view (not required for default view) */
+    context?: string;
+    /** Components to display in this view */
+    components?: string[];
+    /** Whether this is the default view (exactly one view should be default) */
+    isDefault?: boolean;
+    /** Icon for navigation */
+    icon?: string;
+    /** Layout hint for how to arrange components */
+    layout?: 'single' | 'split' | 'tabs' | 'stack';
+}
+/**
+ * Legacy column definition for views.
+ * @deprecated Use DossierField in components instead
  */
 export interface DossierViewColumn {
     name: string;
@@ -91,7 +312,8 @@ export interface DossierViewColumn {
     width?: string;
 }
 /**
- * Action definition for views.
+ * Legacy action definition for views.
+ * @deprecated Use DossierComponentAction in components instead
  */
 export interface DossierViewAction {
     intent: string;
@@ -101,7 +323,8 @@ export interface DossierViewAction {
     requiresSelection?: boolean;
 }
 /**
- * Filter definition for views.
+ * Legacy filter definition for views.
+ * @deprecated Use DossierComponentFilter in components instead
  */
 export interface DossierViewFilter {
     field: string;
@@ -110,44 +333,10 @@ export interface DossierViewFilter {
     options?: string[];
 }
 /**
- * View types supported by the Avatar.
- * A view is like a page in a website - it defines what can be rendered.
+ * Legacy view types.
+ * @deprecated Component types are now defined on components, not views
  */
 export type DossierViewType = 'list' | 'grid' | 'detail' | 'form' | 'dashboard' | 'chat' | 'custom';
-/**
- * View definition from dossier presentation.
- *
- * A View in the Avatar is like a page in a website, but instead of HTML,
- * it defines what CAN be rendered in the Avatar View canvas. The Avatar
- * decides HOW to render based on user preferences and platform capabilities.
- */
-export interface DossierView {
-    /** Unique view identifier (used for navigation) */
-    name: string;
-    /** Human-readable title */
-    title?: string;
-    /** View description */
-    description?: string;
-    /** View type - determines available components */
-    type?: DossierViewType;
-    /** Data source for the view (fact type or query) */
-    source?: string;
-    /** Column definitions for list/grid views */
-    columns?: DossierViewColumn[];
-    /** Available actions in this view */
-    actions?: DossierViewAction[];
-    /** Filter definitions */
-    filters?: DossierViewFilter[];
-    /** Default sort configuration */
-    defaultSort?: {
-        field: string;
-        direction: 'asc' | 'desc';
-    };
-    /** Whether this is the default/home view */
-    isDefault?: boolean;
-    /** Icon for navigation */
-    icon?: string;
-}
 /**
  * Layout hint from dossier presentation.
  */
@@ -158,11 +347,44 @@ export interface DossierLayoutHint {
 }
 /**
  * Presentation hints from agent dossier.
+ *
+ * Contains all UI-related hints from the agent:
+ * - **Brand** - Visual identity (colors, logo, greetings)
+ * - **State** - UI state schema (controls which views/components are shown)
+ * - **Components** - Reusable UI building blocks (list, detail, form, etc.)
+ * - **Views** - Composition of components (which components to show together)
+ * - **Home** - Landing page sections
+ * - **Layouts** - Rendering suggestions
+ *
+ * ## Architecture
+ *
+ * ```
+ * State (UI only) ──────────────────────────────────────────────────┐
+ *                                                                   │
+ * Components (building blocks)                                      │
+ *   ├── books (list of books)                                       │
+ *   ├── book_detail (single book) ─────────── depends on ───────────┤
+ *   └── add_book_form (create form)                                 │
+ *                                                                   │
+ * Views (composition) ←───────────── activated by ──────────────────┘
+ *   ├── home (default) ─────────── shows [books]
+ *   └── book_view ──────────────── shows [books, book_detail]
+ * ```
+ *
+ * **Note:** State is Avatar-only UI state, not Brain state.
  */
 export interface DossierPresentation {
+    /** Brand identity (colors, logo, greetings) */
     brand?: DossierBrand;
-    home?: DossierHomeSection[];
+    /** UI state schema - controls which views/components are shown (Avatar-only, not Brain state) */
+    state?: DossierState;
+    /** UI components - reusable building blocks */
+    components?: DossierComponent[];
+    /** Views - composition of components (which components to show together) */
     views?: DossierView[];
+    /** Home/landing sections */
+    home?: DossierHomeSection[];
+    /** Layout hints for rendering */
     layouts?: DossierLayoutHint[];
 }
 /**
@@ -174,8 +396,6 @@ export interface DossierIdentity {
     version: string;
     description?: string;
     tags?: string[];
-    /** Welcome message shown when user first connects */
-    welcomeMessage?: string;
 }
 /**
  * Agent dossier - capabilities and presentation hints.
