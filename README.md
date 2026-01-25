@@ -33,104 +33,135 @@ The Avatar runs on specific platforms:
 ```
 uhum-avatar/
 ├── Cargo.toml              # Rust workspace
+├── Justfile                # Build commands (like npm scripts)
 ├── AGENTS.md               # AI agent guidelines
-├── README.md               # This file
 │
-├── crates/
-│   └── ua-core/            # Platform-agnostic core (Rust)
-│       ├── src/
-│       │   ├── lib.rs      # Main entry
-│       │   ├── traits.rs   # Platform boundary traits
-│       │   ├── session.rs  # Brain session management
-│       │   ├── dossier.rs  # Agent Dossier parsing
-│       │   ├── state.rs    # Local memory cache
-│       │   ├── queue.rs    # Intention queue (offline)
-│       │   └── error.rs    # Error types
-│       └── Cargo.toml
+├── crates/                 # Rust crates
+│   ├── ua-core/            # Shared types & platform boundary traits
+│   ├── ua-agent/           # Agent communication (session, dossier, queue)
+│   ├── ua-view/            # Uhum View layer (routing, reactive state, runtime)
+│   └── ua-wasm/            # Browser WASM bindings
 │
-└── platforms/              # Platform-specific shells (planned)
-    ├── browser/            # WASM + TypeScript + React
-    ├── ios/                # Swift + SwiftUI
-    ├── android/            # Kotlin + Compose
-    └── desktop/            # Tauri
+├── platforms/              # Platform-specific implementations
+│   └── browser/            # TypeScript + React
+│       ├── src/            # @uhum/avatar package
+│       └── examples/
+│           └── demo/       # Demo invoice app
+│
+└── specs/                  # Specifications
+    ├── UHUM-VIEW.md        # Rendering architecture
+    ├── VIEW-INSTRUCTIONS.md # Reactive state management
+    ├── SMART-ROUTING.md    # Input handling
+    └── PLATFORMS.md        # Platform architecture
 ```
 
 ## Core Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    AVATAR CORE (Rust)                        │
-│                                                              │
-│   ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
-│   │  Protocol   │  │   Session   │  │   Agent Dossier     │ │
-│   │  (Terms,    │  │  (Cursors,  │  │   (Capabilities,    │ │
-│   │   Frames)   │  │   Dedup)    │  │    Intents, Views)  │ │
-│   └─────────────┘  └─────────────┘  └─────────────────────┘ │
-│                                                              │
-│   ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
-│   │  Intention  │  │   Memory    │  │      State          │ │
-│   │   Queue     │  │   Cache     │  │   (Local cache)     │ │
-│   └─────────────┘  └─────────────┘  └─────────────────────┘ │
-│                                                              │
-│   ════════════════════ PLATFORM BOUNDARY ═════════════════  │
-│                                                              │
-│   Traits: Transport, Storage, Clock, Random                  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Platform Boundary Traits
-
-The core defines traits that platforms must implement:
-
-```rust
-// WebSocket communication
-trait Transport {
-    async fn connect(&mut self, url: &str) -> Result<()>;
-    async fn send(&mut self, message: &str) -> Result<()>;
-    async fn receive(&mut self) -> Result<Option<String>>;
-    async fn close(&mut self) -> Result<()>;
-}
-
-// Persistent storage
-trait Storage {
-    async fn get(&self, key: &str) -> Result<Option<Bytes>>;
-    async fn set(&self, key: &str, value: &[u8]) -> Result<()>;
-    async fn delete(&self, key: &str) -> Result<()>;
-}
-
-// Time (for determinism)
-trait Clock {
-    fn now(&self) -> Timestamp;
-}
-
-// Random (for determinism)
-trait Random {
-    fn uuid_v4(&self) -> String;
-}
+┌─────────────────────────────────────────────────────────────────┐
+│                      AVATAR CORE (Rust)                          │
+│                                                                  │
+│   ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌───────────┐ │
+│   │  ua-core   │  │  ua-agent  │  │  ua-view   │  │  ua-wasm  │ │
+│   │  (types,   │  │  (session, │  │  (routing, │  │  (browser │ │
+│   │   traits)  │  │   dossier) │  │   runtime) │  │   bindings)│ │
+│   └────────────┘  └────────────┘  └────────────┘  └───────────┘ │
+│                                                                  │
+│   ════════════════════ PLATFORM BOUNDARY ══════════════════════ │
+│                                                                  │
+│   Traits: Transport, Storage, Clock, Random, Scheduler, Executor │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Shared Crates
 
-The Avatar shares crates with `uhum-brain`:
+The Avatar shares crates with [uhum-brain](../uhum-brain):
 
-```
-ub-core      — Identity, Timestamp, Duration, Money, Cursor, Event
-ub-protocol  — Term, Frame, Message parsing/serialization
-```
+| Crate | Purpose |
+|-------|---------|
+| `ub-core` | Identity, Timestamp, Duration, Money, Cursor, Event |
+| `ub-protocol` | Term, Frame, Message parsing/serialization |
+
+These are compiled directly into Avatar — one source of truth.
 
 ## Building
 
+### Prerequisites
+
+- [Rust](https://rustup.rs/) (latest stable)
+- [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/) (for browser WASM)
+- [Node.js](https://nodejs.org/) (for browser TypeScript)
+- [just](https://github.com/casey/just) (optional, for build commands)
+
+### Quick Start
+
 ```bash
-# Build the core
+# Install just (optional but recommended)
+cargo install just
+
+# See all available commands
+just
+
+# Build everything
+just build
+
+# Run tests
+just test
+```
+
+### Manual Commands
+
+```bash
+# Build all Rust crates
 cargo build
 
 # Run tests
 cargo test
 
-# Build for WASM (browser)
-cd crates/ua-core
-cargo build --target wasm32-unknown-unknown --features wasm
+# Build WASM for browser
+cd crates/ua-wasm
+wasm-pack build --target web --out-dir ../../platforms/browser/wasm
+
+# Build TypeScript package
+cd platforms/browser
+npm install
+npm run build
 ```
+
+### Available Just Commands
+
+| Command | Description |
+|---------|-------------|
+| `just build` | Build all Rust crates |
+| `just test` | Run all tests |
+| `just build-wasm` | Build WASM for browser |
+| `just browser-build` | Build TypeScript package |
+| `just demo-dev` | Run demo app (localhost:3000) |
+| `just demo-server` | Run mock Brain server |
+| `just setup` | Install all dependencies |
+| `just all` | Full production build |
+
+## Demo App
+
+A demo invoice application showcasing the Avatar:
+
+```bash
+# Terminal 1: Start mock Brain server
+just demo-server
+
+# Terminal 2: Start dev server
+just demo-dev
+```
+
+Open http://localhost:3000
+
+![Demo Screenshot](docs/demo-screenshot.png)
+
+Features:
+- 📋 Invoice management
+- 💳 Payment processing
+- 💬 Chat interface
+- ✨ Reactive UI updates
 
 ## Uhum View
 
@@ -138,10 +169,19 @@ The Avatar renders **Uhum View** — a unified, AI-native interface:
 
 - **Not traditional apps** — same experience across all platforms
 - **Component-based** — fixed set of components (cards, carousels, lists, forms)
-- **Agent-defined** — agents define views/templates in their dossier
+- **Reactive** — state changes trigger UI updates via Redux-like architecture
 - **Platform-native rendering** — React on web, SwiftUI on iOS, etc.
 
-See [AGENTS.md](./AGENTS.md) for full Uhum View documentation.
+See [specs/UHUM-VIEW.md](./specs/UHUM-VIEW.md) for full documentation.
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [AGENTS.md](./AGENTS.md) | AI agent guidelines |
+| [specs/UHUM-VIEW.md](./specs/UHUM-VIEW.md) | Rendering architecture |
+| [specs/VIEW-INSTRUCTIONS.md](./specs/VIEW-INSTRUCTIONS.md) | Reactive state management |
+| [specs/PLATFORMS.md](./specs/PLATFORMS.md) | Platform architecture |
 
 ## License
 

@@ -548,6 +548,70 @@ Time 3000ms: Timer fires
 - **Time-travel debugging** — Can replay actions
 - **Platform-agnostic** — Same logic, different renderers
 
+### 6.10 The AvatarRuntime
+
+The `AvatarRuntime` is the orchestrator that ties everything together:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      AVATAR RUNTIME                              │
+│                                                                  │
+│   ┌─────────────┐    dispatch()    ┌─────────────────────────┐  │
+│   │   ACTION    │ ───────────────▶ │        REDUCER          │  │
+│   └─────────────┘                  │  (state, action) → ...  │  │
+│         ▲                          └───────────┬─────────────┘  │
+│         │                                      │                │
+│         │ fire()                    ┌──────────┴──────────┐     │
+│         │                           ▼                     ▼     │
+│   ┌─────┴───────┐           ┌─────────────┐       ┌───────────┐ │
+│   │  SCHEDULER  │◀──────────│    STATE    │       │  EFFECTS  │ │
+│   │  (timers)   │  schedule │             │       │           │ │
+│   └─────────────┘           └──────┬──────┘       └─────┬─────┘ │
+│                                    │                    │       │
+│                              notify│              execute│      │
+│                                    ▼                    ▼       │
+│                            ┌─────────────┐    ┌──────────────┐  │
+│                            │ SUBSCRIBERS │    │   EXECUTOR   │  │
+│                            │    (UI)     │    │  (platform)  │  │
+│                            └─────────────┘    └──────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Platform Traits
+
+Platforms implement these traits:
+
+```rust
+/// Timer scheduling (browser: setTimeout, native: tokio)
+trait Scheduler: Send + Sync {
+    fn schedule(&self, id: String, delay_ms: u64, callback: Box<dyn FnOnce()>);
+    fn cancel(&self, id: &str);
+}
+
+/// Platform-specific effects (clipboard, haptics, scroll)
+trait EffectExecutor: Send + Sync {
+    fn execute(&self, effect: PlatformEffect);
+}
+```
+
+#### Usage
+
+```rust
+// Create runtime with platform implementations
+let runtime = AvatarRuntime::new_arc(scheduler, executor);
+
+// Subscribe to state changes (UI reactivity)
+runtime.subscribe(Box::new(|state| {
+    render_view(state);
+}));
+
+// Dispatch actions directly
+runtime.dispatch(Action::ShowMessage { ... });
+
+// Process view instructions from Brain
+runtime.process_instructions(instructions);
+```
+
 ---
 
 ## 7. User Preferences (Avatar-local)

@@ -7,8 +7,9 @@ When working on this codebase, always refer to the following specifications:
 - **[../uhum-brain/specs/ARCHITECTURE.md](../uhum-brain/specs/ARCHITECTURE.md)** — System architecture, Agent vs Brain distinction, decision flow
 - **[../uhum-brain/specs/PROTOCOL.md](../uhum-brain/specs/PROTOCOL.md)** — UHUM protocol, message types, term syntax
 - **[./specs/UHUM-VIEW.md](./specs/UHUM-VIEW.md)** — Uhum View rendering, layered architecture, user preferences
-- **[./specs/VIEW-INSTRUCTIONS.md](./specs/VIEW-INSTRUCTIONS.md)** — View instructions from Brain, variable binding, platform mapping
+- **[./specs/VIEW-INSTRUCTIONS.md](./specs/VIEW-INSTRUCTIONS.md)** — View instructions from Brain, variable binding, reactive architecture
 - **[./specs/SMART-ROUTING.md](./specs/SMART-ROUTING.md)** — Input handling, text vs UI interactions, Brain gateway
+- **[./specs/PLATFORMS.md](./specs/PLATFORMS.md)** — Platform architecture, browser/iOS/Android implementations
 
 ---
 
@@ -63,8 +64,8 @@ The Avatar runs on **specific platforms**, each with its own:
 │   └─────────────┘  └─────────────┘  └─────────────────────────┘ │
 │                                                                  │
 │   ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│   │  Intention  │  │   Memory    │  │      Network            │ │
-│   │   Queue     │  │   Cache     │  │   (Discovery, Routing)  │ │
+│   │  Intention  │  │   Memory    │  │      Runtime            │ │
+│   │   Queue     │  │   Cache     │  │   (State, Effects)      │ │
 │   └─────────────┘  └─────────────┘  └─────────────────────────┘ │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -244,34 +245,68 @@ agent(
    └── Android: Compose LazyVerticalGrid
 ```
 
-### The Smart Avatar Layer
+---
+
+## Avatar Runtime
+
+The **AvatarRuntime** is the orchestrator that ties everything together:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      SMART AVATAR LAYER                          │
+│                      AVATAR RUNTIME                              │
 │                                                                  │
-│  • User preferences — stored locally, learned over time          │
-│  • Reactive state — functional, event-driven architecture        │
-│  • Scheduled effects — time-based actions (hide message, etc.)  │
-│  • Multi-agent — unified experience across connected agents      │
-│  • Offline handling — queues actions, syncs when connected       │
+│   ┌─────────────┐    dispatch()    ┌─────────────────────────┐  │
+│   │   ACTION    │ ───────────────▶ │        REDUCER          │  │
+│   └─────────────┘                  │  (state, action) → ...  │  │
+│         ▲                          └───────────┬─────────────┘  │
+│         │                                      │                │
+│         │ fire()                    ┌──────────┴──────────┐     │
+│         │                           ▼                     ▼     │
+│   ┌─────┴───────┐           ┌─────────────┐       ┌───────────┐ │
+│   │  SCHEDULER  │◀──────────│    STATE    │       │  EFFECTS  │ │
+│   │  (timers)   │  schedule │             │       │           │ │
+│   └─────────────┘           └──────┬──────┘       └─────┬─────┘ │
+│                                    │                    │       │
+│                              notify│              execute│      │
+│                                    ▼                    ▼       │
+│                            ┌─────────────┐    ┌──────────────┐  │
+│                            │ SUBSCRIBERS │    │   EXECUTOR   │  │
+│                            │    (UI)     │    │  (platform)  │  │
+│                            └─────────────┘    └──────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    REACTIVE STATE MANAGEMENT                     │
-│                                                                  │
-│  View Instructions → Actions → Reducer → State → UI Reacts      │
-│                                   ↓                              │
-│                               Effects → Scheduled Future Actions │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   PLATFORM-NATIVE RENDERING                      │
-│                                                                  │
-│  React / SwiftUI / Compose / egui — same components, native feel │
-└─────────────────────────────────────────────────────────────────┘
+```
+
+### Runtime Responsibilities
+
+| Component | Responsibility |
+|-----------|----------------|
+| **State** | Single source of truth for all UI state |
+| **Dispatcher** | Receives actions, runs reducer, updates state |
+| **Reducer** | Pure function: `(state, action) → (new_state, effects)` |
+| **Scheduler** | Platform-specific timer scheduling (effects) |
+| **EffectExecutor** | Platform-specific effect execution (clipboard, haptics) |
+| **Subscriptions** | Notifies UI components when state changes |
+
+### Usage Example
+
+```rust
+// Create runtime with platform implementations
+let runtime = AvatarRuntime::new_arc(scheduler, executor);
+
+// Subscribe to state changes (UI reactivity)
+runtime.subscribe(Box::new(|state| {
+    // Update UI based on new state
+    render_view(state);
+}));
+
+// Dispatch actions directly
+runtime.dispatch(Action::ShowMessage {
+    text: "Hello!".into(),
+    message_type: MessageType::Success,
+});
+
+// Process view instructions from Brain (converts to actions)
+runtime.process_instructions(view_instructions);
 ```
 
 ### Reactive Architecture
@@ -374,6 +409,9 @@ The Brain has a **gateway** that handles all interpretation:
 | **Avatar** | Client runtime — this project! Connects to Brains, renders Uhum View |
 | **Avatar Core** | Platform-agnostic logic (Rust) — protocol, session, state |
 | **Avatar Shell** | Platform-specific code — UI, storage, transport adapters |
+| **AvatarRuntime** | Orchestrator — holds state, dispatches actions, executes effects |
+| **Scheduler** | Platform trait — schedules timed effects (setTimeout, tokio::sleep) |
+| **EffectExecutor** | Platform trait — executes platform-specific effects (clipboard, haptics) |
 | **Uhum View** | Unified component-based interface rendered by Avatar across all platforms |
 | **View Instructions** | Generic presentation guidance from Brain (message, navigate, etc.) |
 | **Agent Dossier** | Agent's self-description — intents, parameters, effects, + presentation hints |
@@ -384,6 +422,8 @@ The Brain has a **gateway** that handles all interpretation:
 | **Intention** | Request from Avatar to do something |
 | **Decision** | Brain's response — facts (data) + view instructions (presentation) |
 | **Cursor** | Position in the event stream for resumption |
+| **Action** | State change dispatched to reducer (ShowMessage, Navigate, etc.) |
+| **Effect** | Side effect returned by reducer (Schedule, CancelScheduled, Platform) |
 
 ## Protocol Messages (Avatar ↔ Brain)
 
@@ -404,115 +444,128 @@ The Brain has a **gateway** that handles all interpretation:
 - `PONG` — keep-alive response
 - `ERROR` — something went wrong
 
-## Architecture Overview
-
-### Core Layers (Rust — shared across all platforms)
+## Crate Structure
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    AVATAR CORE (Rust)                        │
-│                                                              │
-│   ┌────────────────────────────────────────────────────┐    │
-│   │                 PROTOCOL LAYER                      │    │
-│   │                                                     │    │
-│   │   • Term parsing & serialization                    │    │
-│   │   • Frame encoding/decoding                         │    │
-│   │   • Message type handling                           │    │
-│   │   • Shared with uhum-brain (ub-protocol crate)      │    │
-│   └────────────────────────────────────────────────────┘    │
-│                            │                                 │
-│                            ▼                                 │
-│   ┌────────────────────────────────────────────────────┐    │
-│   │                 SESSION LAYER                       │    │
-│   │                                                     │    │
-│   │   • Brain session state machine                     │    │
-│   │   • Cursor tracking per agent                       │    │
-│   │   • Event deduplication                             │    │
-│   │   • Intention queue (offline support)               │    │
-│   │   • Resume token management                         │    │
-│   └────────────────────────────────────────────────────┘    │
-│                            │                                 │
-│                            ▼                                 │
-│   ┌────────────────────────────────────────────────────┐    │
-│   │                 AGENT LAYER                         │    │
-│   │                                                     │    │
-│   │   • Agent Dossier parsing                           │    │
-│   │   • Intent discovery & validation                   │    │
-│   │   • Multi-agent connection orchestration            │    │
-│   │   • Network discovery (uhum://uhum.discovery)       │    │
-│   └────────────────────────────────────────────────────┘    │
-│                            │                                 │
-│                            ▼                                 │
-│   ┌────────────────────────────────────────────────────┐    │
-│   │                 STATE LAYER                         │    │
-│   │                                                     │    │
-│   │   • Local memory cache (from MEMORY messages)       │    │
-│   │   • Derived views/projections                       │    │
-│   │   • Reactive subscriptions (callback-based)         │    │
-│   └────────────────────────────────────────────────────┘    │
-│                            │                                 │
-│   ════════════════════════════════════════════════════════  │
-│                    PLATFORM BOUNDARY                         │
-│   ════════════════════════════════════════════════════════  │
-│                            │                                 │
-│   Traits (interfaces) that platforms must implement:         │
-│   • Transport — WebSocket send/receive                       │
-│   • Storage — persist cursors, tokens, cache                 │
-│   • Clock — current time (for timeouts)                      │
-│   • Random — ID generation                                   │
-└─────────────────────────────────────────────────────────────┘
+uhum-avatar/
+├── Cargo.toml                 # Workspace root
+├── crates/                    # Rust crates (Cargo workspace)
+│   ├── ua-core/               # Shared types & platform boundary
+│   │   └── src/
+│   │       ├── lib.rs         # Re-exports
+│   │       ├── error.rs       # AvatarError, Result
+│   │       └── traits.rs      # Transport, Storage, Clock, Random
+│   │
+│   ├── ua-agent/              # Agent communication
+│   │   └── src/
+│   │       ├── lib.rs         # Re-exports
+│   │       ├── session.rs     # AgentSession (connect, intentions, cursors)
+│   │       ├── dossier.rs     # AgentDossier (intents, hints)
+│   │       ├── queue.rs       # IntentionQueue (offline support)
+│   │       └── cache.rs       # MemoryCache (local events)
+│   │
+│   ├── ua-view/               # Uhum View layer
+│   │   └── src/
+│   │       ├── lib.rs         # Re-exports
+│   │       ├── routing.rs     # ComponentAction, ViewInstruction parsing
+│   │       ├── reactive.rs    # State, Actions, Effects, Reducer
+│   │       └── runtime.rs     # AvatarRuntime, Scheduler, EffectExecutor
+│   │
+│   └── ua-wasm/               # Browser WASM bindings (Rust layer)
+│       └── src/
+│           ├── lib.rs         # wasm_bindgen exports
+│           ├── scheduler.rs   # BrowserScheduler (setTimeout)
+│           ├── executor.rs    # BrowserEffectExecutor (DOM APIs)
+│           └── transport.rs   # BrowserTransport (WebSocket)
+│
+├── platforms/                 # Platform-specific code (non-Rust)
+│   ├── browser/               # TypeScript/React
+│   │   ├── package.json
+│   │   └── src/
+│   │       ├── index.ts       # Main exports
+│   │       ├── avatar.ts      # AvatarClient class
+│   │       ├── hooks/         # React hooks (useAvatar, useAgent)
+│   │       └── components/    # Uhum View components
+│   │
+│   ├── ios/                   # Swift/SwiftUI (future)
+│   ├── android/               # Kotlin/Compose (future)
+│   └── desktop/               # Tauri app (future)
+│
+└── specs/                     # Specifications
+    ├── UHUM-VIEW.md           # Layered rendering architecture
+    ├── VIEW-INSTRUCTIONS.md   # Reactive architecture spec
+    ├── SMART-ROUTING.md       # Input handling spec
+    └── PLATFORMS.md           # Platform architecture spec
 ```
 
-### Shell Layer (Platform-Specific)
+### Core Crates (Rust — shared across all platforms)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    PLATFORM SHELL                            │
-│                                                              │
-│   ┌────────────────────────────────────────────────────┐    │
-│   │              TRANSPORT ADAPTER                      │    │
-│   │                                                     │    │
-│   │   Browser: WebSocket API                            │    │
-│   │   iOS/macOS: URLSessionWebSocketTask                │    │
-│   │   Android: OkHttp WebSocket                         │    │
-│   │   Desktop: tokio-tungstenite                        │    │
-│   └────────────────────────────────────────────────────┘    │
-│                            │                                 │
-│   ┌────────────────────────────────────────────────────┐    │
-│   │               STORAGE ADAPTER                       │    │
-│   │                                                     │    │
-│   │   Browser: IndexedDB / localStorage                 │    │
-│   │   iOS/macOS: CoreData / Keychain                    │    │
-│   │   Android: Room / EncryptedSharedPreferences        │    │
-│   │   Desktop: SQLite / OS keychain                     │    │
-│   └────────────────────────────────────────────────────┘    │
-│                            │                                 │
-│   ┌────────────────────────────────────────────────────┐    │
-│   │                 UI LAYER                            │    │
-│   │                                                     │    │
-│   │   Browser: React / Vue / Svelte                     │    │
-│   │   iOS/macOS: SwiftUI                                │    │
-│   │   Android: Jetpack Compose                          │    │
-│   │   Desktop: Tauri + web / egui                       │    │
-│   └────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
+| Crate | Purpose |
+|-------|---------|
+| **ua-core** | Shared types, error handling, platform boundary traits |
+| **ua-agent** | Agent communication (session, dossier, queue, cache) |
+| **ua-view** | Uhum View layer (routing, reactive state, runtime) |
+| **ua-wasm** | WASM bindings for browser (Rust compiled to WASM) |
+
+### Platform Boundary Traits
+
+Platforms implement these traits to provide platform-specific functionality:
+
+```rust
+// Transport — WebSocket connection
+trait Transport {
+    async fn connect(&self, url: &str) -> Result<()>;
+    async fn send(&self, frame: Frame) -> Result<()>;
+    async fn receive(&self) -> Result<Frame>;
+}
+
+// Storage — Persistent storage
+trait Storage {
+    async fn save_cursor(&self, agent_id: &Address, cursor: Cursor) -> Result<()>;
+    async fn load_cursor(&self, agent_id: &Address) -> Result<Option<Cursor>>;
+    // ... resume tokens, events, etc.
+}
+
+// Scheduler — Timer scheduling (for effects)
+trait Scheduler {
+    fn schedule(&self, id: String, delay_ms: u64, callback: Box<dyn FnOnce()>);
+    fn cancel(&self, id: &str);
+}
+
+// EffectExecutor — Platform-specific effects
+trait EffectExecutor {
+    fn execute(&self, effect: PlatformEffect);
+}
+
+// Clock — Time operations (for deterministic testing)
+trait Clock {
+    fn now_millis(&self) -> Timestamp;
+}
+
+// Random — ID generation (for deterministic testing)
+trait Random {
+    fn message_id(&self) -> MessageId;
+    fn session_id(&self) -> SessionId;
+}
 ```
 
 ## Code Conventions
 
 ### Core (Rust)
 1. **Rust for core logic** — same crates as uhum-brain where applicable
-2. **No I/O in core** — all I/O via traits (Transport, Storage, Clock)
+2. **No I/O in core** — all I/O via traits (Transport, Storage, Clock, Scheduler)
 3. **No allocator assumptions** — support no_std for embedded (future)
 4. **Term syntax follows Prolog** — atoms are lowercase, variables are Uppercase
 5. **Events are immutable** — Avatar receives, never modifies
+6. **Pure reducers** — reducer functions have no side effects
+7. **Effects for side effects** — timers, platform APIs return Effect values
 
 ### Shell (Platform-Specific)
 1. **Idiomatic for the platform** — Swift for iOS, Kotlin for Android, etc.
 2. **Thin FFI layer** — call into Rust core, handle callbacks
 3. **Native UI** — SwiftUI, Compose, React — no cross-platform UI frameworks
 4. **Offline-capable** — queue intentions, sync when connected
-5. **Reactive** — state changes trigger UI updates
+5. **Reactive** — subscribe to runtime state, re-render on change
 
 ## Code Sharing Strategy
 
@@ -524,16 +577,6 @@ ub-protocol   — Term, Frame, Message parsing/serialization
 ```
 
 These crates are **compiled directly into the Avatar core**. One source of truth.
-
-### Avatar-Specific Crates
-
-```
-ua-core       — Avatar core logic (session, agent dossiers, state, queue)
-ua-browser    — Browser shell (WASM + TypeScript bindings)
-ua-ios        — iOS shell (Swift bindings via UniFFI)
-ua-android    — Android shell (Kotlin bindings via UniFFI)
-ua-desktop    — Desktop shell (Tauri or native egui)
-```
 
 ### Platform Integration
 

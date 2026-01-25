@@ -4,6 +4,7 @@ members = [
     "crates/ua-core",
     "crates/ua-agent",
     "crates/ua-view",
+    "crates/ua-wasm",
 ]
 
 [workspace.package]
@@ -52,6 +53,7 @@ ub-protocol = { path = "../uhum-brain/crates/ub-protocol" }
 ua-core = { path = "crates/ua-core" }
 ua-agent = { path = "crates/ua-agent" }
 ua-view = { path = "crates/ua-view" }
+ua-wasm = { path = "crates/ua-wasm" }
 
 [profile.release]
 lto = true
