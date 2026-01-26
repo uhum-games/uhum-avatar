@@ -22,10 +22,11 @@
  * ```
  */
 export { AvatarClient, type AvatarClientOptions, type ReconnectOptions } from './avatar';
-export type { AvatarState, Message, MessageType, Modal, LoadingState, ConnectionState, ConnectionStep, AgentDossier, DossierIdentity, DossierIntent, DossierParam, DossierPresentation, DossierBrand, DossierHomeSection, DossierView, DossierViewType, DossierViewColumn, DossierViewAction, DossierViewFilter, DossierLayoutHint, DossierModel, DossierModelField, DossierComponent, DossierField, DossierFieldType, FactsStore, ListCache, } from './types';
+export type { AvatarState, Message, MessageType, ChatMessage, Modal, LoadingState, ConnectionState, ConnectionStep, AgentDossier, DossierIdentity, DossierIntent, DossierParam, DossierPresentation, DossierBrand, DossierHomeSection, DossierView, DossierViewType, DossierViewColumn, DossierViewAction, DossierViewFilter, DossierLayoutHint, DossierModel, DossierModelField, DossierComponent, DossierField, DossierFieldType, EntityStore, FactsStore, ListCache, EntityCache, } from './types';
 export { useAvatar, AvatarProvider, type AvatarContextValue } from './hooks/useAvatar';
 export { useAgent, type UseAgentResult } from './hooks/useAgent';
-export { useList, getModelFacts, getModelDefinition, type UseListOptions, type UseListResult, } from './hooks/useList';
+export { useList, getModelEntities, getModelFacts, getModelDefinition, type UseListOptions, type UseListResult, } from './hooks/useList';
+export { useEntity, getEntity, type UseEntityOptions, type UseEntityResult, } from './hooks/useEntity';
 export { UhumView } from './components/UhumView';
 export { MessageDisplay } from './components/MessageDisplay';
 export { SmartChat, type SmartChatProps, type DockPosition, type Corner, } from './components/SmartChat';

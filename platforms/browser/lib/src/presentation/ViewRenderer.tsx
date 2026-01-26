@@ -37,6 +37,7 @@ import {
   registerComponent,
   getComponentRenderer,
 } from './registry';
+import type { AvatarClient } from '../avatar';
 
 // Import actual components
 import { ListComponent } from './components/ListComponent';
@@ -55,11 +56,15 @@ registerComponent('dashboard', DashboardComponent);
 registerComponent('chat', ChatComponent);
 
 /**
- * Facts store organized by model type.
+ * Entity store organized by model type.
+ * Entities are the working set of model instances loaded from the Brain.
  */
-export interface FactsStore {
+export interface EntityStore {
   [model: string]: Record<string, unknown>[];
 }
+
+/** @deprecated Use EntityStore */
+export type FactsStore = EntityStore;
 
 /**
  * Props for the ViewRenderer component.
@@ -69,10 +74,12 @@ export interface ViewRendererProps {
   presentation?: DossierPresentation;
   /** Model definitions from dossier (at dossier root, not in presentation) */
   models?: DossierModel[];
-  /** Facts (data) from the Brain (legacy array) */
+  /** Data from the Brain (legacy array) */
   facts: unknown[];
-  /** Facts organized by model (new structure) */
-  factsStore?: FactsStore;
+  /** Entities organized by model (model instances for display) */
+  entityStore?: EntityStore;
+  /** @deprecated Use entityStore */
+  factsStore?: EntityStore;
   /** Callback when user triggers an intent */
   onIntent?: (intent: string, params?: Record<string, unknown>) => void;
   /** Enable debug mode */
@@ -83,6 +90,11 @@ export interface ViewRendererProps {
   stateManager?: PresentationStateManager;
   /** Callback when presentation state changes */
   onStateChange?: (state: PresentationState) => void;
+  /**
+   * AvatarClient instance - enables auto-fetching of data when components mount.
+   * When provided, list components will auto-trigger their listIntent on mount.
+   */
+  client?: AvatarClient;
 }
 
 /**
@@ -112,13 +124,17 @@ export function ViewRenderer({
   presentation,
   models,
   facts,
-  factsStore,
+  entityStore,
+  factsStore, // @deprecated - use entityStore
   onIntent,
   debug = false,
   className,
   stateManager: externalStateManager,
   onStateChange,
+  client,
 }: ViewRendererProps) {
+  // Use entityStore, fall back to deprecated factsStore
+  const entities = entityStore ?? factsStore;
   // Create or use state manager
   const stateManager = useMemo(
     () => externalStateManager ?? createPresentationStateManager(),
@@ -238,8 +254,19 @@ export function ViewRenderer({
             return null;
           }
 
-          // Get data for this component from factsStore (new) or legacy facts array
-          const componentData = filterFactsBySource(facts, component);
+          // Get data for this component:
+          // 1. First check entityStore (new pattern - entities grouped by model)
+          // 2. Fall back to filtering from legacy facts array
+          const modelName = component.source;
+          let componentData: unknown[];
+          if (modelName && entities && entities[modelName] && entities[modelName].length > 0) {
+            // Use data from entityStore (preferred)
+            componentData = entities[modelName];
+          } else {
+            // Fall back to legacy facts filtering
+            componentData = filterFactsBySource(facts, component);
+          }
+          
           const contextItem = getContextItem(facts, component, presentationState);
           
           // Get model definition for schema-based rendering
@@ -254,6 +281,7 @@ export function ViewRenderer({
             onSelect: (item) => handleSelect(component, item),
             onIntent: handleIntent,
             className: '',
+            client, // Enable auto-fetching in components
           };
 
           return (
@@ -264,7 +292,7 @@ export function ViewRenderer({
         })}
       </div>
     );
-  }, [viewSelection, facts, presentationState, handleSelect, handleIntent, getModel, debug]);
+  }, [viewSelection, facts, entities, presentationState, handleSelect, handleIntent, getModel, debug, client]);
 
   // Get model names for debug display
   const modelNames = models?.map(m => m.name) ?? [];
@@ -297,32 +325,32 @@ export function ViewRenderer({
             </div>
           </div>
 
-          {/* Facts Section (by model) */}
+          {/* Entities Section (by model) */}
           <div className="uhum-view-debug__section">
-            <div className="uhum-view-debug__section-title">Facts (by Model)</div>
-            {modelNames.length === 0 && !factsStore ? (
+            <div className="uhum-view-debug__section-title">Entities (by Model)</div>
+            {modelNames.length === 0 && !entities ? (
               <div className="uhum-view-debug__item uhum-view-debug__empty">
                 No models defined
               </div>
             ) : (
               <>
-                {/* Show facts for each model */}
+                {/* Show entities for each model */}
                 {modelNames.map(modelName => {
-                  const modelFacts = factsStore?.[modelName] ?? [];
+                  const modelEntities = entities?.[modelName] ?? [];
                   return (
                     <div key={modelName} className="uhum-view-debug__model">
                       <div className="uhum-view-debug__item">
                         <span className="uhum-view-debug__label">{modelName}:</span>
                         <span className="uhum-view-debug__value uhum-view-debug__count">
-                          {modelFacts.length} {modelFacts.length === 1 ? 'item' : 'items'}
+                          {modelEntities.length} {modelEntities.length === 1 ? 'item' : 'items'}
                         </span>
                       </div>
-                      {modelFacts.length > 0 && (
+                      {modelEntities.length > 0 && (
                         <div className="uhum-view-debug__facts">
-                          <pre>{JSON.stringify(modelFacts.slice(0, 3), null, 2)}</pre>
-                          {modelFacts.length > 3 && (
+                          <pre>{JSON.stringify(modelEntities.slice(0, 3), null, 2)}</pre>
+                          {modelEntities.length > 3 && (
                             <div className="uhum-view-debug__more">
-                              ...and {modelFacts.length - 3} more
+                              ...and {modelEntities.length - 3} more
                             </div>
                           )}
                         </div>
@@ -330,15 +358,15 @@ export function ViewRenderer({
                     </div>
                   );
                 })}
-                {/* Show any unmodeled facts from factsStore */}
-                {factsStore && Object.keys(factsStore).filter(k => !modelNames.includes(k)).map(key => {
-                  const otherFacts = factsStore[key];
+                {/* Show any unmodeled entities */}
+                {entities && Object.keys(entities).filter(k => !modelNames.includes(k)).map(key => {
+                  const otherEntities = entities[key];
                   return (
                     <div key={key} className="uhum-view-debug__model">
                       <div className="uhum-view-debug__item">
                         <span className="uhum-view-debug__label">{key} (unmodeled):</span>
                         <span className="uhum-view-debug__value uhum-view-debug__count">
-                          {otherFacts.length} {otherFacts.length === 1 ? 'item' : 'items'}
+                          {otherEntities.length} {otherEntities.length === 1 ? 'item' : 'items'}
                         </span>
                       </div>
                     </div>

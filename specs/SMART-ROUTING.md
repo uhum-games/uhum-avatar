@@ -2,6 +2,8 @@
 
 This document defines how the Avatar handles user input.
 
+> **Related:** See [Brain Gateway Spec](../../uhum-brain/specs/GATEWAY.md) for the Brain-side processing.
+
 ---
 
 ## 1. Design Philosophy
@@ -18,30 +20,67 @@ The Avatar follows a simple routing principle:
 
 **No local LLM needed.** The Brain's gateway handles all interpretation.
 
+### Single Round-Trip Design
+
+When the user sends a chat message, the Avatar does **one round-trip**:
+
+```
+Avatar → MESSAGE → Brain (LLM + Execute) → DECISION → Avatar
+```
+
+**Not two round-trips:**
+```
+❌ Avatar → MESSAGE → Brain (LLM) → UL → Avatar → INTENTION → Brain → DECISION
+```
+
+The Brain interprets AND executes in one call. This keeps the Avatar thin and reduces latency.
+
 ---
 
 ## 2. Input Types
 
 ### 2.1 Text Input (Chat)
 
-All text input is sent to the Brain:
+All text input is sent to the Brain as a `message` intention:
 
 ```
 User types: "pay my invoice"
 
 Avatar:
-  → Sends MESSAGE("pay my invoice")
+  → Sends INTENTION(message, [text("pay my invoice")])
 
-Brain:
-  Gateway → NLU → Intent classification
-  → Returns DECISION with facts + view instructions
+Brain Gateway:
+  1. Receives message intention
+  2. Calls LLM with agent context (models, intents, rules)
+  3. LLM returns: { response: "...", ul: "intention(...)" }
+  4. Brain parses UL clauses
+  5. Brain executes each clause through logic engine
+  6. Returns DECISION with facts + view instructions + response text
+
+Avatar:
+  ← Receives DECISION
+  → Shows response in chat
+  → Processes view instructions (desires, navigation, etc.)
+  → Updates facts store
 ```
 
-The Brain's gateway handles:
-- Intent classification
-- Entity extraction
-- Disambiguation
-- UI command recognition ("click the pay button")
+**Example decision from chat:**
+
+```prolog
+decision(accepted, [
+  facts([
+    invoice("INV-123", 99.50, paid)
+  ]),
+  effects([
+    message(success, "Invoice paid!"),
+    desire([invoice_detail]),
+    navigate(invoices)
+  ]),
+  response("I've paid your invoice for $99.50. The payment is confirmed.")
+]).
+```
+
+The `response` field contains the human-readable text for the chat interface.
 
 ### 2.2 UI Interaction (Deterministic)
 
@@ -52,17 +91,22 @@ UI components have their action encoded:
 │  [Pay Invoice]                                                │
 │                                                              │
 │  Component metadata (in Uhum Language):                       │
-│  {                                                           │
-│    action: intent,                                           │
-│    intent: pay_invoice,                                      │
-│    params: { invoice_id: "INV-123" }                         │
-│  }                                                           │
+│  action(intent(pay_invoice, [invoice_id("INV-123")]))        │
 └──────────────────────────────────────────────────────────────┘
 
 User clicks → Avatar reads metadata → Sends INTENTION
 ```
 
 This is like HTML's `<a href="...">` — the behavior is encoded, not interpreted.
+
+```
+Avatar:
+  → Sends INTENTION(pay_invoice, [param(invoice_id, "INV-123")])
+
+Brain:
+  → Direct to logic engine (no LLM needed)
+  → Returns DECISION
+```
 
 ### 2.3 Pure UI Actions (Local)
 
@@ -92,48 +136,90 @@ These happen entirely in the Avatar without any Brain communication.
         │  (chat)       │             │ (click, etc.)  │
         └───────┬───────┘             └───────┬───────┘
                 │                             │
-                │                     ┌───────▼───────┐
-                │                     │ HAS ACTION    │
-                │                     │ METADATA?     │
-                │                     └───────┬───────┘
-                │                       yes   │   no
+                ▼                     ┌───────▼───────┐
+        ┌───────────────┐             │ HAS ACTION    │
+        │   INTENTION   │             │ METADATA?     │
+        │   (message)   │             └───────┬───────┘
+        └───────┬───────┘               yes   │   no
                 │                     ┌───────┴───────┐
                 │                     │               │
-                ▼                     ▼               ▼
-        ┌───────────────┐     ┌───────────────┐  ┌──────────┐
-        │    MESSAGE    │     │   INTENTION   │  │  LOCAL   │
-        │  to Brain     │     │   to Brain    │  │  ONLY    │
-        └───────┬───────┘     └───────┬───────┘  └──────────┘
+                │                     ▼               ▼
+                │             ┌───────────────┐  ┌──────────┐
+                │             │   INTENTION   │  │  LOCAL   │
+                │             │  (structured) │  │  ONLY    │
+                │             └───────┬───────┘  └──────────┘
                 │                     │
                 └──────────┬──────────┘
                            │
                            ▼
                 ┌─────────────────────┐
-                │       BRAIN         │
+                │    BRAIN GATEWAY    │
                 │                     │
-                │  Gateway → Logic    │
-                │                     │
+                │  message? → LLM     │
+                │  structured? → exec │
                 └──────────┬──────────┘
                            │
                            ▼
                 ┌─────────────────────┐
                 │     DECISION        │
-                │  (facts + view)     │
+                │  facts + effects    │
+                │  + response (chat)  │
                 └──────────┬──────────┘
                            │
                            ▼
                 ┌─────────────────────┐
                 │      AVATAR         │
                 │                     │
-                │  Process view       │
-                │  instructions       │
-                │  deterministically  │
+                │  Show response      │
+                │  Process effects    │
+                │  Update facts       │
                 └─────────────────────┘
 ```
 
 ---
 
-## 4. Component Action Metadata
+## 4. Sending Chat Messages
+
+### TypeScript Implementation
+
+```typescript
+// Send a chat message
+function sendChatMessage(text: string) {
+  avatar.sendIntention('message', { text });
+}
+
+// The above translates to:
+// intention(message, [text("user's message here")]).
+```
+
+### Processing the Response
+
+```typescript
+// In the decision handler
+function handleDecision(decision: Decision) {
+  // 1. Show chat response (if present)
+  if (decision.response) {
+    addChatMessage({
+      role: 'assistant',
+      text: decision.response,
+    });
+  }
+
+  // 2. Process effects (messages, desires, navigation)
+  for (const effect of decision.effects) {
+    processEffect(effect);
+  }
+
+  // 3. Update facts store
+  for (const fact of decision.facts) {
+    factsStore.upsert(fact);
+  }
+}
+```
+
+---
+
+## 5. Component Action Metadata
 
 Every interactive component has action metadata in Uhum Language:
 
@@ -169,43 +255,38 @@ component(button, [
 
 ---
 
-## 5. Brain Gateway
+## 6. Brain Gateway (Overview)
 
-The Brain has a **gateway** that handles all incoming messages:
+> **Full details:** See [Brain Gateway Spec](../../uhum-brain/specs/GATEWAY.md)
+
+The Brain's gateway handles all incoming messages:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                      BRAIN GATEWAY                               │
 │                                                                  │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │                    INPUT CLASSIFIER                      │   │
-│   │                                                          │   │
-│   │  MESSAGE("pay my invoice")                              │   │
-│   │  → Intent: pay_invoice                                  │   │
-│   │  → Params: {} (needs clarification)                     │   │
-│   │                                                          │   │
-│   │  MESSAGE("click the pay button")                        │   │
-│   │  → UI Request: trigger(pay_button)                      │   │
-│   │                                                          │   │
-│   │  INTENTION(pay_invoice, {invoice_id: "INV-123"})       │   │
-│   │  → Direct to logic engine                               │   │
-│   └─────────────────────────────────────────────────────────┘   │
-│                              │                                   │
-│                              ▼                                   │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │                    LOGIC ENGINE                          │   │
-│   │                                                          │   │
-│   │  Evaluates rules, produces DECISION                     │   │
-│   │  with facts + view instructions                         │   │
-│   └─────────────────────────────────────────────────────────┘   │
+│   INTENTION(message, [text(...)])                               │
+│   └─► LLM interprets with agent context                         │
+│       └─► Returns UL clauses                                    │
+│           └─► Brain executes each clause                        │
+│               └─► Returns DECISION                              │
+│                                                                  │
+│   INTENTION(pay_invoice, [...])                                 │
+│   └─► Direct to logic engine                                    │
+│       └─► Returns DECISION                                      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-The gateway is where NLU/LLM processing happens — **on the server**, not the client.
+The gateway uses **LLM** (like GPT-4o-mini) to interpret natural language:
+
+1. **Input:** User message + agent context (models, intents, rules)
+2. **Output:** UL clauses to execute + human response text
+3. **Execution:** Brain runs the UL clauses through logic engine
+4. **Result:** DECISION with facts, effects, and chat response
 
 ---
 
-## 6. Examples
+## 7. Examples
 
 ### Example 1: User clicks "Pay" button
 
@@ -214,17 +295,18 @@ Button metadata: action(intent(pay_invoice, [invoice_id("INV-123")]))
 
 Avatar:
   Reads metadata
-  → Sends INTENTION(pay_invoice, {invoice_id: "INV-123"})
+  → Sends INTENTION(pay_invoice, [param(invoice_id, "INV-123")])
 
 Brain:
   Gateway: Structured INTENTION, route to logic
   Logic: Process payment
   
   → Returns DECISION(accepted, [
-      invoice("INV-123", 99.50, paid)
-    ], [
-      message(success, "Invoice paid!"),
-      navigate(invoices)
+      facts([invoice("INV-123", 99.50, paid)]),
+      effects([
+        message(success, "Invoice paid!"),
+        navigate(invoices)
+      ])
     ])
 
 Avatar:
@@ -237,38 +319,58 @@ Avatar:
 
 ```
 Avatar:
-  → Sends MESSAGE("pay invoice 123")
+  → Sends INTENTION(message, [text("pay invoice 123")])
 
 Brain:
-  Gateway: NLU classifies
-    Intent: pay_invoice
-    Params: {invoice_id: "INV-123"}
+  Gateway: Message intention, needs LLM
+  LLM: "pay invoice 123" → intention(pay_invoice, [param(invoice_id, "INV-123")])
   Logic: Process payment
   
-  → Returns same DECISION as Example 1
-
-Avatar:
-  Same deterministic processing
-```
-
-### Example 3: User types "click the pay button"
-
-```
-Avatar:
-  → Sends MESSAGE("click the pay button")
-
-Brain:
-  Gateway: Recognizes UI request
-  Resolves: "pay button" → component with certain action
-  
-  → Returns DECISION(accepted, [], [
-      trigger(pay_button)
+  → Returns DECISION(accepted, [
+      facts([invoice("INV-123", 99.50, paid)]),
+      effects([
+        message(success, "Invoice paid!"),
+        desire([invoice_detail]),
+        navigate(invoices)
+      ]),
+      response("I've paid invoice 123 for you. The payment is confirmed.")
     ])
 
 Avatar:
-  Finds component "pay_button"
-  Triggers its action
-  → Which sends INTENTION (Example 1 flow)
+  Shows "I've paid invoice 123..." in chat
+  Processes view instructions
+  Updates facts store
+```
+
+### Example 3: User types "show me my books"
+
+```
+Avatar:
+  → Sends INTENTION(message, [text("show me my books")])
+
+Brain:
+  Gateway: Message intention, needs LLM
+  LLM: Interprets as list query + desire
+    → intention(list_books, []).
+    → desire([book_list]).
+  Logic: Executes list_books intent
+  
+  → Returns DECISION(accepted, [
+      facts([
+        book("1", "1984", "George Orwell"),
+        book("2", "Foundation", "Isaac Asimov"),
+        book("3", "Dune", "Frank Herbert")
+      ]),
+      effects([
+        desire([book_list])
+      ]),
+      response("Here are your books.")
+    ])
+
+Avatar:
+  Shows "Here are your books." in chat
+  Updates facts store with books
+  Shows book_list component (because it's desired)
 ```
 
 ### Example 4: User scrolls the list
@@ -283,14 +385,14 @@ Avatar:
 
 ---
 
-## 7. Summary
+## 8. Summary
 
-| Input | Avatar Action | Brain Call? |
-|-------|---------------|-------------|
-| Text chat | Send MESSAGE | Yes |
-| Button click (with intent) | Send INTENTION | Yes |
-| Button click (navigate) | Navigate locally | No |
-| Scroll, expand, focus | Handle locally | No |
-| Voice command | Convert to text, send MESSAGE | Yes |
+| Input | Avatar Action | Brain Processing |
+|-------|---------------|------------------|
+| Text chat | Send `intention(message, [text(...)])` | LLM → Parse UL → Execute |
+| Button click (intent) | Send `intention(name, params)` | Direct execute |
+| Button click (navigate) | Navigate locally | None |
+| Scroll, expand, focus | Handle locally | None |
+| Voice command | Convert to text, send as message | LLM → Parse UL → Execute |
 
 **Key Principle:** The Avatar is a thin client. All interpretation happens in the Brain's gateway. The Avatar just sends input and processes view instructions deterministically.

@@ -15,6 +15,20 @@ export interface Message {
     messageType: MessageType;
 }
 /**
+ * Chat message for conversational history.
+ * These are agent/user exchanges shown in the chat area.
+ */
+export interface ChatMessage {
+    /** Unique message ID */
+    id: string;
+    /** Message text */
+    text: string;
+    /** Who sent the message */
+    sender: 'user' | 'agent';
+    /** When the message was sent */
+    timestamp: number;
+}
+/**
  * Loading indicator state.
  */
 export interface LoadingState {
@@ -233,6 +247,8 @@ export interface DossierComponent {
     context?: string;
     /** Intent to trigger for fetching list data (for list/grid components) */
     listIntent?: string;
+    /** Intent to trigger for fetching a single entity (for detail components) */
+    detailIntent?: string;
     /** Field definitions */
     fields?: DossierField[];
     /** Available actions */
@@ -248,6 +264,8 @@ export interface DossierComponent {
     isDefault?: boolean;
     /** Icon for navigation */
     icon?: string;
+    /** Whether to auto-fetch data on component mount (default: true) */
+    autoFetch?: boolean;
 }
 /**
  * State variable definition.
@@ -454,15 +472,22 @@ export interface AgentDossier {
     presentation?: DossierPresentation;
 }
 /**
- * Facts store organized by model type.
+ * Entity store organized by model type.
  *
- * Facts are stored per model name for efficient lookup.
+ * Entities are the working set of model instances loaded from the Brain.
+ * Unlike Brain facts (complete, used for inference), Avatar entities are
+ * a subset for display and interaction (may be paginated, filtered, etc.).
+ *
  * E.g., `{ book: [...], genre: [...] }`
  */
-export interface FactsStore {
-    /** Facts indexed by model name */
+export interface EntityStore {
+    /** Entities indexed by model name */
     [model: string]: Record<string, unknown>[];
 }
+/**
+ * @deprecated Use EntityStore instead
+ */
+export type FactsStore = EntityStore;
 /**
  * Cache entry for list queries.
  */
@@ -477,16 +502,33 @@ export interface ListCache {
     loading: boolean;
 }
 /**
+ * Cache entry for a single entity.
+ */
+export interface EntityCache {
+    /** Intent that was triggered */
+    intent: string;
+    /** Model this cache is for */
+    model: string;
+    /** Entity identifier */
+    entityId: string;
+    /** When the cache was last updated */
+    updatedAt: number;
+    /** Whether a request is currently pending */
+    loading: boolean;
+}
+/**
  * Global Avatar UI state.
  *
  * This is the single source of truth for all UI state.
  * Components subscribe to slices of this state and re-render when they change.
  */
 export interface AvatarState {
-    /** Current message being displayed (if any) */
+    /** Current notification message (for errors/warnings - use chatMessages for conversations) */
     message: Message | null;
     /** Current loading indicator (if any) */
     loading: LoadingState | null;
+    /** Chat message history (agent-user conversation) */
+    chatMessages: ChatMessage[];
     /** Current route/view */
     currentRoute: string;
     /** Navigation history for back/forward */
@@ -500,17 +542,24 @@ export interface AvatarState {
     /** Currently highlighted elements */
     highlightedElements: Set<string>;
     /**
-     * Facts store organized by model type.
+     * Entity store organized by model type.
+     * Contains the working set of model instances loaded from the Brain.
      * E.g., { book: [{title: "...", author: "..."}, ...], genre: [...] }
      */
-    factsStore: FactsStore;
+    entityStore: EntityStore;
+    /**
+     * @deprecated Use entityStore instead
+     */
+    factsStore: EntityStore;
     /**
      * Legacy facts array (for backward compatibility)
-     * @deprecated Use factsStore instead
+     * @deprecated Use entityStore instead
      */
     facts: unknown[];
     /** List query cache (tracks which lists have been fetched) */
     listCache: Record<string, ListCache>;
+    /** Entity query cache (tracks which individual entities have been fetched) */
+    entityCache: Record<string, EntityCache>;
     /** Whether connected to an Agent */
     connected: boolean;
     /** Current agent ID (if connected) */
@@ -531,6 +580,17 @@ export type Action = {
     messageType: MessageType;
 } | {
     type: 'HIDE_MESSAGE';
+} | {
+    type: 'ADD_CHAT_MESSAGE';
+    message: ChatMessage;
+} | {
+    type: 'ADD_USER_MESSAGE';
+    text: string;
+} | {
+    type: 'ADD_AGENT_MESSAGE';
+    text: string;
+} | {
+    type: 'CLEAR_CHAT_MESSAGES';
 } | {
     type: 'NAVIGATE';
     route: string;
@@ -571,6 +631,15 @@ export type Action = {
 } | {
     type: 'CLEAR_FACTS';
 } | {
+    type: 'SYNC_ENTITIES';
+    model: string;
+    entities: Record<string, unknown>[];
+} | {
+    type: 'CLEAR_MODEL_ENTITIES';
+    model: string;
+} | {
+    type: 'CLEAR_ALL_ENTITIES';
+} | {
     type: 'SYNC_FACTS';
     model: string;
     facts: Record<string, unknown>[];
@@ -589,6 +658,18 @@ export type Action = {
     model: string;
 } | {
     type: 'INVALIDATE_ALL_LIST_CACHE';
+} | {
+    type: 'SET_ENTITY_LOADING';
+    model: string;
+    entityId: string;
+    intent: string;
+    loading: boolean;
+} | {
+    type: 'INVALIDATE_ENTITY_CACHE';
+    model: string;
+    entityId?: string;
+} | {
+    type: 'INVALIDATE_ALL_ENTITY_CACHE';
 } | {
     type: 'SET_CONNECTED';
     connected: boolean;

@@ -524,16 +524,13 @@ export interface TextMessageOptions {
 }
 
 export function buildTextMessage(options: TextMessageOptions): string {
-  const body = Term.compound('message', [Term.string(options.text)]);
-
-  return buildMessage(
-    {
-      type: 'intention',
-      from: `uhum://avatar:${options.agentAddress}/${options.avatarId}`,
-      to: `uhum://${options.agentAddress}`,
-    },
-    body
-  );
+  // Use the same format as buildIntentionMessage: intention(message, [text(...)])
+  return buildIntentionMessage({
+    avatarId: options.avatarId,
+    agentAddress: options.agentAddress,
+    intent: 'message',
+    params: { text: options.text },
+  });
 }
 
 export function buildLeaveMessage(avatarId: string, agentAddress: string): string {
@@ -614,25 +611,25 @@ function valueToTerm(value: unknown): Term {
 // ============================================================================
 
 /**
- * Extract facts from a DECISION message body.
+ * Extract data terms from a DECISION message body.
  *
- * Body format: decision(Status, [facts(...), effects(...)]).
+ * Decision format: decision(Status, facts([...]), effects([...]), response("..."))
+ * We look for facts(...) compound term in the args.
+ * 
+ * Note: Brain returns "facts" (logical assertions), but Avatar treats them
+ * as "entities" (model instances for display). This function extracts the
+ * raw terms which are then converted to entities by the Avatar.
  */
-export function extractDecisionFacts(body: Term): Term[] {
+export function extractDecisionData(body: Term): Term[] {
   if (body.type !== 'compound' || body.functor !== 'decision') {
     return [];
   }
 
-  // decision(accepted, [...])
-  const dataList = body.args[1];
-  if (dataList?.type !== 'list') {
-    return [];
-  }
-
-  // Find facts(...) in the list
-  for (const item of dataList.items) {
-    if (item.type === 'compound' && item.functor === 'facts') {
-      const factsList = item.args[0];
+  // Look for facts(...) compound term in args
+  // decision(accepted, facts([...]), effects([...]), response("..."))
+  for (const arg of body.args) {
+    if (arg?.type === 'compound' && arg.functor === 'facts') {
+      const factsList = arg.args[0];
       if (factsList?.type === 'list') {
         return factsList.items;
       }
@@ -643,29 +640,58 @@ export function extractDecisionFacts(body: Term): Term[] {
 }
 
 /**
+ * @deprecated Use extractDecisionData instead
+ */
+export function extractDecisionFacts(body: Term): Term[] {
+  return extractDecisionData(body);
+}
+
+/**
  * Extract view instructions from a DECISION message body.
+ * 
+ * Decision format: decision(Status, facts([...]), effects([...]), response("..."))
+ * We extract from effects(...) which contains message, desire, navigate, etc.
  */
 export function extractViewInstructions(body: Term): Term[] {
   if (body.type !== 'compound' || body.functor !== 'decision') {
     return [];
   }
 
-  const dataList = body.args[1];
-  if (dataList?.type !== 'list') {
-    return [];
-  }
-
-  // Find view_instructions(...) in the list
-  for (const item of dataList.items) {
-    if (item.type === 'compound' && item.functor === 'view_instructions') {
-      const instructionsList = item.args[0];
-      if (instructionsList?.type === 'list') {
-        return instructionsList.items;
+  // Look for effects(...) compound term in args
+  // decision(accepted, facts([]), effects([...]), response("..."))
+  for (const arg of body.args) {
+    if (arg?.type === 'compound' && arg.functor === 'effects') {
+      const effectsList = arg.args[0];
+      if (effectsList?.type === 'list') {
+        return effectsList.items;
       }
     }
   }
 
   return [];
+}
+
+/**
+ * Extract response text from a DECISION message body.
+ * 
+ * Decision format: decision(Status, facts([...]), effects([...]), response("..."))
+ */
+export function extractDecisionResponse(body: Term): string | null {
+  if (body.type !== 'compound' || body.functor !== 'decision') {
+    return null;
+  }
+
+  // Look for response(...) compound term in args
+  for (const arg of body.args) {
+    if (arg?.type === 'compound' && arg.functor === 'response') {
+      const responseText = arg.args[0];
+      if (responseText?.type === 'string') {
+        return responseText.value;
+      }
+    }
+  }
+
+  return null;
 }
 
 /**

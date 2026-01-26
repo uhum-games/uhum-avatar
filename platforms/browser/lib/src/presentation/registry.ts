@@ -32,6 +32,7 @@
 import React from 'react';
 import { DossierComponent, DossierComponentType, DossierModel } from '../types';
 import { PresentationState } from './state';
+import type { AvatarClient } from '../avatar';
 
 /**
  * Props passed to every UI component.
@@ -55,6 +56,12 @@ export interface ComponentRenderProps {
   onIntent?: (intent: string, params?: Record<string, unknown>) => void;
   /** Optional className */
   className?: string;
+  /** 
+   * AvatarClient instance - used for auto-fetching data on component mount.
+   * When provided, list components will auto-trigger their listIntent,
+   * and detail components will auto-trigger their detailIntent.
+   */
+  client?: AvatarClient;
 }
 
 /**

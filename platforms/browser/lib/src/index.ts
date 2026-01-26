@@ -30,6 +30,7 @@ export type {
   AvatarState,
   Message,
   MessageType,
+  ChatMessage,
   Modal,
   LoadingState,
   ConnectionState,
@@ -47,14 +48,18 @@ export type {
   DossierViewAction,
   DossierViewFilter,
   DossierLayoutHint,
-  // New types
+  // Model types
   DossierModel,
   DossierModelField,
   DossierComponent,
   DossierField,
   DossierFieldType,
+  // Entity store (working set of model instances for display)
+  EntityStore,
+  // @deprecated - use EntityStore
   FactsStore,
   ListCache,
+  EntityCache,
 } from './types';
 
 // React hooks
@@ -62,11 +67,19 @@ export { useAvatar, AvatarProvider, type AvatarContextValue } from './hooks/useA
 export { useAgent, type UseAgentResult } from './hooks/useAgent';
 export {
   useList,
+  getModelEntities,
+  // @deprecated - use getModelEntities
   getModelFacts,
   getModelDefinition,
   type UseListOptions,
   type UseListResult,
 } from './hooks/useList';
+export {
+  useEntity,
+  getEntity,
+  type UseEntityOptions,
+  type UseEntityResult,
+} from './hooks/useEntity';
 
 // Components (re-export for convenience)
 export { UhumView } from './components/UhumView';

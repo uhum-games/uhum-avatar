@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import type { useAvatar } from '@uhum/avatar-lib';
 
 /**
@@ -37,17 +37,25 @@ function pickGreeting(seed: number, greetings: string[]): string {
   return greetings[seed % greetings.length];
 }
 
+/**
+ * Format timestamp for display.
+ */
+function formatTime(timestamp: number): string {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 interface ChatMessagesProps {
   state: ReturnType<typeof useAvatar>['state'];
 }
 
 /**
  * Chat messages display area.
- * Shows loading, messages, facts, or empty state with greeting.
+ * Shows chat history, loading state, or empty state with greeting.
  */
 export function ChatMessages({ state }: ChatMessagesProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   // Generate a stable session seed once when the component mounts.
-  // This ensures the greeting doesn't change during connection attempts.
   const sessionSeedRef = useRef<number>(Math.floor(Math.random() * 10000));
 
   // Get greeting message from brand greetings or default
@@ -57,6 +65,11 @@ export function ChatMessages({ state }: ChatMessagesProps) {
     const seed = getGreetingSeed(state.agentId, sessionSeedRef.current);
     return pickGreeting(seed, greetingsToUse);
   }, [state.dossier?.presentation?.brand?.greetings, state.agentId]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [state.chatMessages?.length]);
 
   // Show loading
   if (state.loading) {
@@ -68,20 +81,21 @@ export function ChatMessages({ state }: ChatMessagesProps) {
     );
   }
 
-  // Show message if present
-  if (state.message) {
+  // Show chat messages if there are any
+  const messages = state.chatMessages ?? [];
+  if (messages.length > 0) {
     return (
-      <div className={`avatar-chat-message avatar-chat-message--${state.message.messageType}`}>
-        {state.message.text}
-      </div>
-    );
-  }
-
-  // Show facts/data
-  if (state.facts.length > 0) {
-    return (
-      <div className="avatar-chat-facts">
-        <pre>{JSON.stringify(state.facts, null, 2)}</pre>
+      <div className="avatar-chat-messages">
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`avatar-chat-bubble avatar-chat-bubble--${msg.sender}`}
+          >
+            <div className="avatar-chat-bubble-text">{msg.text}</div>
+            <div className="avatar-chat-bubble-time">{formatTime(msg.timestamp)}</div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
       </div>
     );
   }

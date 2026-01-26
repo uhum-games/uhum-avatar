@@ -11,11 +11,12 @@
  * - Action buttons (global and per-row)
  * - Loading and empty states
  * - Responsive design
+ * - Auto-fetching: triggers listIntent on mount when client is provided
  */
 
-import React from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { ComponentRenderProps } from '../registry';
-import { DossierField, DossierModelField, DossierModel } from '../../types';
+import { DossierField, DossierModelField, DossierModel, AvatarState } from '../../types';
 
 /**
  * Extended props for ListComponent that include model definition.
@@ -29,13 +30,93 @@ export interface ListComponentProps extends ComponentRenderProps {
 
 export const ListComponent: React.FC<ListComponentProps> = ({
   component,
-  data,
+  data: propsData,
   model,
-  loading = false,
+  loading: propsLoading = false,
   onSelect,
   onIntent,
   className,
+  client,
 }) => {
+  // Track whether we've already triggered the auto-fetch
+  const hasFetchedRef = useRef(false);
+  
+  // Subscribe to client state for real-time updates
+  const [clientState, setClientState] = useState<AvatarState | null>(
+    client?.getState() ?? null
+  );
+  
+  // Subscribe to client state changes
+  useEffect(() => {
+    if (!client) return;
+    
+    const unsubscribe = client.subscribe((newState) => {
+      setClientState(newState);
+    });
+    
+    return unsubscribe;
+  }, [client]);
+  
+  // Get the model name from component source
+  const modelName = component.source ?? '';
+  
+  // Get the list intent (e.g., "list_books")
+  const listIntent = component.listIntent ?? (modelName ? `list_${modelName}s` : '');
+  
+  // Check if auto-fetch is enabled (default: true)
+  const autoFetch = component.autoFetch !== false;
+  
+  // Get data from client state (entityStore) if available, otherwise use props
+  const data = useMemo(() => {
+    if (clientState && modelName) {
+      return clientState.entityStore[modelName] ?? propsData;
+    }
+    return propsData;
+  }, [clientState, modelName, propsData]);
+  
+  // Get loading state from client if available
+  const loading = useMemo(() => {
+    if (clientState && modelName) {
+      return clientState.listCache[modelName]?.loading ?? propsLoading;
+    }
+    return propsLoading;
+  }, [clientState, modelName, propsLoading]);
+  
+  // Auto-trigger the listIntent on mount
+  useEffect(() => {
+    // Skip if:
+    // - No client provided
+    // - No list intent
+    // - Auto-fetch disabled
+    // - Already fetched
+    if (!client || !listIntent || !autoFetch || hasFetchedRef.current) {
+      return;
+    }
+    
+    // Check if we already have data or if a fetch is in progress
+    const cache = clientState?.listCache[modelName];
+    if (cache?.loading || cache?.updatedAt) {
+      // Already loading or already fetched
+      hasFetchedRef.current = true;
+      return;
+    }
+    
+    console.log(`[ListComponent] Auto-triggering intent: ${listIntent}`);
+    
+    // Mark as fetched to prevent duplicate fetches
+    hasFetchedRef.current = true;
+    
+    // Set loading state
+    client.dispatch({
+      type: 'SET_LIST_LOADING',
+      model: modelName,
+      intent: listIntent,
+      loading: true,
+    });
+    
+    // Send the intention to the Brain
+    client.sendIntention(listIntent, {});
+  }, [client, clientState, listIntent, modelName, autoFetch]);
   // Use component fields if specified, otherwise fall back to model fields
   const fields = getFields(component.fields, model);
   const actions = component.actions ?? [];

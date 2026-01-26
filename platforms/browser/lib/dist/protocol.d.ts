@@ -105,15 +105,33 @@ export declare function buildLeaveMessage(avatarId: string, agentAddress: string
 export declare function buildPingMessage(avatarId: string, agentAddress: string): string;
 export declare function buildAckMessage(avatarId: string, agentAddress: string, cursor: number): string;
 /**
- * Extract facts from a DECISION message body.
+ * Extract data terms from a DECISION message body.
  *
- * Body format: decision(Status, [facts(...), effects(...)]).
+ * Decision format: decision(Status, facts([...]), effects([...]), response("..."))
+ * We look for facts(...) compound term in the args.
+ *
+ * Note: Brain returns "facts" (logical assertions), but Avatar treats them
+ * as "entities" (model instances for display). This function extracts the
+ * raw terms which are then converted to entities by the Avatar.
+ */
+export declare function extractDecisionData(body: Term): Term[];
+/**
+ * @deprecated Use extractDecisionData instead
  */
 export declare function extractDecisionFacts(body: Term): Term[];
 /**
  * Extract view instructions from a DECISION message body.
+ *
+ * Decision format: decision(Status, facts([...]), effects([...]), response("..."))
+ * We extract from effects(...) which contains message, desire, navigate, etc.
  */
 export declare function extractViewInstructions(body: Term): Term[];
+/**
+ * Extract response text from a DECISION message body.
+ *
+ * Decision format: decision(Status, facts([...]), effects([...]), response("..."))
+ */
+export declare function extractDecisionResponse(body: Term): string | null;
 /**
  * Extract events from a MEMORY message body.
  *

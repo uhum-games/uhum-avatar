@@ -18,6 +18,21 @@ export interface Message {
 }
 
 /**
+ * Chat message for conversational history.
+ * These are agent/user exchanges shown in the chat area.
+ */
+export interface ChatMessage {
+  /** Unique message ID */
+  id: string;
+  /** Message text */
+  text: string;
+  /** Who sent the message */
+  sender: 'user' | 'agent';
+  /** When the message was sent */
+  timestamp: number;
+}
+
+/**
  * Loading indicator state.
  */
 export interface LoadingState {
@@ -289,6 +304,8 @@ export interface DossierComponent {
   context?: string;
   /** Intent to trigger for fetching list data (for list/grid components) */
   listIntent?: string;
+  /** Intent to trigger for fetching a single entity (for detail components) */
+  detailIntent?: string;
   /** Field definitions */
   fields?: DossierField[];
   /** Available actions */
@@ -301,6 +318,8 @@ export interface DossierComponent {
   isDefault?: boolean;
   /** Icon for navigation */
   icon?: string;
+  /** Whether to auto-fetch data on component mount (default: true) */
+  autoFetch?: boolean;
 }
 
 // =============================================================================
@@ -542,15 +561,23 @@ export interface AgentDossier {
 }
 
 /**
- * Facts store organized by model type.
+ * Entity store organized by model type.
  * 
- * Facts are stored per model name for efficient lookup.
+ * Entities are the working set of model instances loaded from the Brain.
+ * Unlike Brain facts (complete, used for inference), Avatar entities are
+ * a subset for display and interaction (may be paginated, filtered, etc.).
+ * 
  * E.g., `{ book: [...], genre: [...] }`
  */
-export interface FactsStore {
-  /** Facts indexed by model name */
+export interface EntityStore {
+  /** Entities indexed by model name */
   [model: string]: Record<string, unknown>[];
 }
+
+/**
+ * @deprecated Use EntityStore instead
+ */
+export type FactsStore = EntityStore;
 
 /**
  * Cache entry for list queries.
@@ -567,6 +594,22 @@ export interface ListCache {
 }
 
 /**
+ * Cache entry for a single entity.
+ */
+export interface EntityCache {
+  /** Intent that was triggered */
+  intent: string;
+  /** Model this cache is for */
+  model: string;
+  /** Entity identifier */
+  entityId: string;
+  /** When the cache was last updated */
+  updatedAt: number;
+  /** Whether a request is currently pending */
+  loading: boolean;
+}
+
+/**
  * Global Avatar UI state.
  *
  * This is the single source of truth for all UI state.
@@ -574,10 +617,14 @@ export interface ListCache {
  */
 export interface AvatarState {
   // === Feedback ===
-  /** Current message being displayed (if any) */
+  /** Current notification message (for errors/warnings - use chatMessages for conversations) */
   message: Message | null;
   /** Current loading indicator (if any) */
   loading: LoadingState | null;
+
+  // === Chat ===
+  /** Chat message history (agent-user conversation) */
+  chatMessages: ChatMessage[];
 
   // === Navigation ===
   /** Current route/view */
@@ -599,17 +646,24 @@ export interface AvatarState {
 
   // === Data (from Agent) ===
   /** 
-   * Facts store organized by model type.
+   * Entity store organized by model type.
+   * Contains the working set of model instances loaded from the Brain.
    * E.g., { book: [{title: "...", author: "..."}, ...], genre: [...] }
    */
-  factsStore: FactsStore;
+  entityStore: EntityStore;
+  /** 
+   * @deprecated Use entityStore instead
+   */
+  factsStore: EntityStore;
   /** 
    * Legacy facts array (for backward compatibility)
-   * @deprecated Use factsStore instead
+   * @deprecated Use entityStore instead
    */
   facts: unknown[];
   /** List query cache (tracks which lists have been fetched) */
   listCache: Record<string, ListCache>;
+  /** Entity query cache (tracks which individual entities have been fetched) */
+  entityCache: Record<string, EntityCache>;
 
   // === Session ===
   /** Whether connected to an Agent */
@@ -632,6 +686,11 @@ export interface AvatarState {
 export type Action =
   | { type: 'SHOW_MESSAGE'; text: string; messageType: MessageType }
   | { type: 'HIDE_MESSAGE' }
+  // Chat message actions
+  | { type: 'ADD_CHAT_MESSAGE'; message: ChatMessage }
+  | { type: 'ADD_USER_MESSAGE'; text: string }
+  | { type: 'ADD_AGENT_MESSAGE'; text: string }
+  | { type: 'CLEAR_CHAT_MESSAGES' }
   | { type: 'NAVIGATE'; route: string }
   | { type: 'GO_BACK' }
   | { type: 'GO_FORWARD' }
@@ -648,7 +707,11 @@ export type Action =
   // Legacy facts action (backward compatibility)
   | { type: 'UPDATE_FACTS'; facts: unknown[] }
   | { type: 'CLEAR_FACTS' }
-  // New facts sync actions (organized by model)
+  // Entity sync actions (organized by model)
+  | { type: 'SYNC_ENTITIES'; model: string; entities: Record<string, unknown>[] }
+  | { type: 'CLEAR_MODEL_ENTITIES'; model: string }
+  | { type: 'CLEAR_ALL_ENTITIES' }
+  // @deprecated - use SYNC_ENTITIES instead
   | { type: 'SYNC_FACTS'; model: string; facts: Record<string, unknown>[] }
   | { type: 'CLEAR_MODEL_FACTS'; model: string }
   | { type: 'CLEAR_ALL_FACTS' }
@@ -656,6 +719,10 @@ export type Action =
   | { type: 'SET_LIST_LOADING'; model: string; intent: string; loading: boolean }
   | { type: 'INVALIDATE_LIST_CACHE'; model: string }
   | { type: 'INVALIDATE_ALL_LIST_CACHE' }
+  // Entity cache actions
+  | { type: 'SET_ENTITY_LOADING'; model: string; entityId: string; intent: string; loading: boolean }
+  | { type: 'INVALIDATE_ENTITY_CACHE'; model: string; entityId?: string }
+  | { type: 'INVALIDATE_ALL_ENTITY_CACHE' }
   // Session actions
   | { type: 'SET_CONNECTED'; connected: boolean; agentId?: string }
   | { type: 'SET_CONNECTION_STATE'; state: ConnectionState }
@@ -678,15 +745,18 @@ export function createInitialState(): AvatarState {
   return {
     message: null,
     loading: null,
+    chatMessages: [],
     currentRoute: '',
     navigationHistory: [],
     forwardHistory: [],
     modal: null,
     focusedElement: null,
     highlightedElements: new Set(),
-    factsStore: {},
-    facts: [], // Legacy, for backward compatibility
+    entityStore: {},
+    factsStore: {}, // @deprecated - use entityStore
+    facts: [], // @deprecated - use entityStore
     listCache: {},
+    entityCache: {},
     connected: false,
     agentId: null,
     connectionState: 'disconnected',
@@ -708,6 +778,44 @@ export function avatarReducer(state: AvatarState, action: Action): AvatarState {
 
     case 'HIDE_MESSAGE':
       return { ...state, message: null };
+
+    // Chat message actions
+    case 'ADD_CHAT_MESSAGE':
+      return {
+        ...state,
+        chatMessages: [...state.chatMessages, action.message],
+      };
+
+    case 'ADD_USER_MESSAGE':
+      return {
+        ...state,
+        chatMessages: [
+          ...state.chatMessages,
+          {
+            id: `user_${Date.now()}`,
+            text: action.text,
+            sender: 'user' as const,
+            timestamp: Date.now(),
+          },
+        ],
+      };
+
+    case 'ADD_AGENT_MESSAGE':
+      return {
+        ...state,
+        chatMessages: [
+          ...state.chatMessages,
+          {
+            id: `agent_${Date.now()}`,
+            text: action.text,
+            sender: 'agent' as const,
+            timestamp: Date.now(),
+          },
+        ],
+      };
+
+    case 'CLEAR_CHAT_MESSAGES':
+      return { ...state, chatMessages: [] };
 
     case 'NAVIGATE': {
       const newHistory = state.currentRoute
@@ -789,15 +897,16 @@ export function avatarReducer(state: AvatarState, action: Action): AvatarState {
     case 'CLEAR_FACTS':
       return { ...state, facts: [] };
 
-    // New facts sync actions (organized by model)
-    case 'SYNC_FACTS': {
-      const newFactsStore = {
-        ...state.factsStore,
-        [action.model]: action.facts,
+    // Entity sync actions (organized by model)
+    case 'SYNC_ENTITIES': {
+      const newEntityStore = {
+        ...state.entityStore,
+        [action.model]: action.entities,
       };
       return { 
         ...state, 
-        factsStore: newFactsStore,
+        entityStore: newEntityStore,
+        factsStore: newEntityStore, // Keep deprecated alias in sync
         // Update list cache timestamp
         listCache: {
           ...state.listCache,
@@ -810,14 +919,46 @@ export function avatarReducer(state: AvatarState, action: Action): AvatarState {
       };
     }
 
-    case 'CLEAR_MODEL_FACTS': {
-      const newFactsStore = { ...state.factsStore };
-      delete newFactsStore[action.model];
-      return { ...state, factsStore: newFactsStore };
+    case 'CLEAR_MODEL_ENTITIES': {
+      const newEntityStore = { ...state.entityStore };
+      delete newEntityStore[action.model];
+      return { ...state, entityStore: newEntityStore, factsStore: newEntityStore };
     }
 
+    case 'CLEAR_ALL_ENTITIES':
+      return { ...state, entityStore: {}, factsStore: {}, listCache: {}, entityCache: {} };
+
+    // @deprecated - use SYNC_ENTITIES instead
+    case 'SYNC_FACTS': {
+      const newEntityStore = {
+        ...state.entityStore,
+        [action.model]: action.facts,
+      };
+      return { 
+        ...state, 
+        entityStore: newEntityStore,
+        factsStore: newEntityStore,
+        listCache: {
+          ...state.listCache,
+          [action.model]: {
+            ...state.listCache[action.model],
+            updatedAt: Date.now(),
+            loading: false,
+          },
+        },
+      };
+    }
+
+    // @deprecated - use CLEAR_MODEL_ENTITIES instead
+    case 'CLEAR_MODEL_FACTS': {
+      const newEntityStore = { ...state.entityStore };
+      delete newEntityStore[action.model];
+      return { ...state, entityStore: newEntityStore, factsStore: newEntityStore };
+    }
+
+    // @deprecated - use CLEAR_ALL_ENTITIES instead
     case 'CLEAR_ALL_FACTS':
-      return { ...state, factsStore: {}, listCache: {} };
+      return { ...state, entityStore: {}, factsStore: {}, listCache: {}, entityCache: {} };
 
     // List cache actions
     case 'SET_LIST_LOADING': {
@@ -843,6 +984,45 @@ export function avatarReducer(state: AvatarState, action: Action): AvatarState {
 
     case 'INVALIDATE_ALL_LIST_CACHE':
       return { ...state, listCache: {} };
+
+    // Entity cache actions
+    case 'SET_ENTITY_LOADING': {
+      const cacheKey = `${action.model}:${action.entityId}`;
+      return {
+        ...state,
+        entityCache: {
+          ...state.entityCache,
+          [cacheKey]: {
+            intent: action.intent,
+            model: action.model,
+            entityId: action.entityId,
+            updatedAt: state.entityCache[cacheKey]?.updatedAt ?? 0,
+            loading: action.loading,
+          },
+        },
+      };
+    }
+
+    case 'INVALIDATE_ENTITY_CACHE': {
+      if (action.entityId) {
+        // Invalidate specific entity
+        const cacheKey = `${action.model}:${action.entityId}`;
+        const { [cacheKey]: _, ...rest } = state.entityCache;
+        return { ...state, entityCache: rest };
+      } else {
+        // Invalidate all entities for this model
+        const newCache: Record<string, EntityCache> = {};
+        for (const [key, value] of Object.entries(state.entityCache)) {
+          if (value.model !== action.model) {
+            newCache[key] = value;
+          }
+        }
+        return { ...state, entityCache: newCache };
+      }
+    }
+
+    case 'INVALIDATE_ALL_ENTITY_CACHE':
+      return { ...state, entityCache: {} };
 
     case 'SET_CONNECTED':
       return {

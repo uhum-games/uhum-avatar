@@ -26,6 +26,7 @@ import {
   buildAckMessage,
   extractDecisionFacts,
   extractViewInstructions,
+  extractDecisionResponse,
   extractMemoryEvents,
   extractDossierFromWelcome,
   termToObject,
@@ -67,25 +68,28 @@ function termToFactObject(term: Term, model?: DossierModel): Record<string, unkn
 }
 
 /**
- * Group facts by their model (functor name).
+ * Group data terms by their model (functor name) into entities.
+ * 
+ * Brain facts are converted to Avatar entities - the working set
+ * of model instances for display and interaction.
  */
-function groupFactsByModel(
-  facts: Term[],
+function groupByModel(
+  terms: Term[],
   models?: DossierModel[]
 ): Map<string, Record<string, unknown>[]> {
   const groups = new Map<string, Record<string, unknown>[]>();
 
-  for (const fact of facts) {
-    if (fact.type !== 'compound') continue;
+  for (const term of terms) {
+    if (term.type !== 'compound') continue;
 
-    const modelName = fact.functor;
+    const modelName = term.functor;
     const model = models?.find(m => m.name === modelName);
-    const factObj = termToFactObject(fact, model);
+    const entity = termToFactObject(term, model);
 
     if (!groups.has(modelName)) {
       groups.set(modelName, []);
     }
-    groups.get(modelName)!.push(factObj);
+    groups.get(modelName)!.push(entity);
   }
 
   return groups;
@@ -628,35 +632,55 @@ export class AvatarClient {
 
     if (!message.body) return;
 
-    // Extract facts
-    const facts = extractDecisionFacts(message.body);
-    if (facts.length > 0) {
+    // Extract data from decision and convert to entities
+    const dataTerms = extractDecisionFacts(message.body);
+    if (dataTerms.length > 0) {
       // Get model definitions from dossier (if available)
       const models = this.state.dossier?.models;
 
-      // Group facts by model and sync to factsStore
-      const factsByModel = groupFactsByModel(facts, models);
-      for (const [modelName, modelFacts] of factsByModel) {
-        this.log(`Syncing ${modelFacts.length} facts for model "${modelName}"`);
-        this.dispatch({ type: 'SYNC_FACTS', model: modelName, facts: modelFacts });
+      // Group by model and sync to entityStore
+      const entitiesByModel = groupByModel(dataTerms, models);
+      for (const [modelName, entities] of entitiesByModel) {
+        this.log(`Syncing ${entities.length} entities for model "${modelName}"`);
+        this.dispatch({ type: 'SYNC_ENTITIES', model: modelName, entities });
       }
 
       // Also update legacy facts array for backward compatibility
-      const factsAsObjects = facts.map(termToObject);
-      this.log('Decision facts (legacy):', factsAsObjects);
+      const factsAsObjects = dataTerms.map(termToObject);
+      this.log('Decision data (legacy):', factsAsObjects);
       this.dispatch({ type: 'UPDATE_FACTS', facts: factsAsObjects });
     }
 
-    // Extract view instructions - Brain controls what to show
+    // Extract view instructions (effects) - Brain controls what to show
     const instructions = extractViewInstructions(message.body);
-    if (instructions.length > 0) {
-      const viewInstructions = this.termInstructionsToViewInstructions(instructions);
+    const viewInstructions = instructions.length > 0 
+      ? this.termInstructionsToViewInstructions(instructions)
+      : [];
+    
+    // Check if effects already contain a message
+    const hasMessageEffect = viewInstructions.some(i => i.type === 'message');
+    
+    // Extract response text - add to chat as agent message (avoid duplicates with message effect)
+    const responseText = extractDecisionResponse(message.body);
+    if (responseText && !hasMessageEffect) {
+      this.log('Decision response:', responseText);
+      // Add response to chat history (agent talking to user)
+      this.dispatch({
+        type: 'ADD_AGENT_MESSAGE',
+        text: responseText,
+      });
+    } else if (responseText) {
+      this.log('Decision response (handled via message effect):', responseText);
+    }
+
+    // Process view instructions
+    if (viewInstructions.length > 0) {
       this.log('View instructions:', viewInstructions);
       this.processInstructions(viewInstructions);
     }
 
-    // Only show rejection messages (errors are important feedback)
-    // Success messages should come from view_instructions if the Brain wants to show them
+    // Only show rejection messages as notifications (errors are important feedback)
+    // Regular messages go to chat history
     if (message.body.type === 'compound' && message.body.functor === 'decision') {
       const status = message.body.args[0];
       if (status?.type === 'atom' && status.value === 'rejected') {
@@ -685,17 +709,17 @@ export class AvatarClient {
 
     if (!message.body) return;
 
-    // Extract events (which are facts)
+    // Extract events and convert to entities
     const events = extractMemoryEvents(message.body);
     if (events.length > 0) {
       // Get model definitions from dossier (if available)
       const models = this.state.dossier?.models;
 
-      // Group events/facts by model and sync to factsStore
-      const factsByModel = groupFactsByModel(events, models);
-      for (const [modelName, modelFacts] of factsByModel) {
-        this.log(`Syncing ${modelFacts.length} memory events for model "${modelName}"`);
-        this.dispatch({ type: 'SYNC_FACTS', model: modelName, facts: modelFacts });
+      // Group events by model and sync to entityStore
+      const entitiesByModel = groupByModel(events, models);
+      for (const [modelName, entities] of entitiesByModel) {
+        this.log(`Syncing ${entities.length} memory events for model "${modelName}"`);
+        this.dispatch({ type: 'SYNC_ENTITIES', model: modelName, entities });
       }
 
       // Also update legacy facts array for backward compatibility
@@ -796,6 +820,22 @@ export class AvatarClient {
         case 'go_back':
           // No additional args
           break;
+
+        case 'desire':
+          // desire([component1, component2, ...])
+          // Extract the list of desired components
+          const desireList = term.args[0];
+          if (desireList?.type === 'list') {
+            instruction.desires = desireList.items
+              .map((item) => {
+                if (item.type === 'atom') {
+                  return item.value;
+                }
+                return null;
+              })
+              .filter((d): d is string => d !== null);
+          }
+          break;
       }
 
       return instruction;
@@ -809,21 +849,34 @@ export class AvatarClient {
 
     switch (instruction.type) {
       case 'message': {
-        const action: Action = {
-          type: 'SHOW_MESSAGE',
-          text: instruction.text as string,
-          messageType: (instruction.messageType as MessageType) || 'info',
-        };
+        const messageType = (instruction.messageType as MessageType) || 'info';
+        const text = instruction.text as string;
 
-        if (instruction.duration) {
-          effects.push({
-            id: 'message',
-            delayMs: instruction.duration as number,
-            action: { type: 'HIDE_MESSAGE' },
-          });
+        // Errors and warnings go to the notification bar (important feedback)
+        // Info and success messages go to chat (conversational)
+        if (messageType === 'error' || messageType === 'warning') {
+          const action: Action = {
+            type: 'SHOW_MESSAGE',
+            text,
+            messageType,
+          };
+
+          if (instruction.duration) {
+            effects.push({
+              id: 'message',
+              delayMs: instruction.duration as number,
+              action: { type: 'HIDE_MESSAGE' },
+            });
+          }
+
+          return { action, effects };
+        } else {
+          // Info/success messages go to chat as agent messages
+          return {
+            action: { type: 'ADD_AGENT_MESSAGE', text },
+            effects,
+          };
         }
-
-        return { action, effects };
       }
 
       case 'navigate':
@@ -885,6 +938,21 @@ export class AvatarClient {
         } else {
           return { action: { type: 'HIDE_LOADING' }, effects };
         }
+
+      case 'desire':
+        // desire([component1, component2, ...]) triggers corresponding intentions
+        // For each desired component, send an intention with that name
+        const desires = instruction.desires as string[] | undefined;
+        if (desires && Array.isArray(desires) && desires.length > 0) {
+          for (const desireName of desires) {
+            this.log(`Triggering intention from desire: ${desireName}`);
+            // Convert desire name (e.g., "list_books") to intention
+            // The desire name should match an intent name
+            this.sendIntention(desireName, {});
+          }
+        }
+        // No state action needed, just side effect of sending intentions
+        return { action: null, effects };
 
       default:
         this.log('Unknown instruction type:', instruction.type);

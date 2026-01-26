@@ -58,6 +58,9 @@ export function AvatarApp({ agentId, agentInfo, debug = false }: AvatarAppProps)
   const handleSendMessage = useCallback(
     (text: string) => {
       if (state.connected) {
+        // Add user message to chat history
+        client.dispatch({ type: 'ADD_USER_MESSAGE', text });
+        // Send to Brain
         client.sendMessage(text);
       }
     },

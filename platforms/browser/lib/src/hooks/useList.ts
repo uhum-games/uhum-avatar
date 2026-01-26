@@ -4,8 +4,11 @@
  * This hook:
  * 1. Triggers the appropriate intent to fetch list data (based on component definition)
  * 2. Caches the results to avoid redundant requests
- * 3. Reads from the factsStore for the specified model
+ * 3. Reads from the entityStore for the specified model
  * 4. Provides cache invalidation capability
+ * 
+ * Note: Brain facts are converted to Avatar entities - the working set
+ * of model instances for display (may be paginated, filtered, etc.).
  * 
  * @example
  * ```tsx
@@ -44,7 +47,7 @@ export interface UseListOptions {
  * Result from the useList hook.
  */
 export interface UseListResult<T = Record<string, unknown>> {
-  /** The list data (from factsStore) */
+  /** The list data (entities from entityStore) */
   data: T[];
   /** Whether a fetch is in progress */
   loading: boolean;
@@ -64,7 +67,7 @@ export interface UseListResult<T = Record<string, unknown>> {
  * Hook to fetch and cache list data for a component.
  * 
  * Automatically triggers the component's `listIntent` and stores results
- * in the `factsStore` under the model name.
+ * in the `entityStore` under the model name.
  */
 export function useList<T = Record<string, unknown>>(
   options: UseListOptions
@@ -93,10 +96,10 @@ export function useList<T = Record<string, unknown>>(
     return state.dossier?.models?.find(m => m.name === modelName);
   }, [state.dossier, modelName]);
 
-  // Get data from factsStore
+  // Get entities from entityStore
   const data = useMemo(() => {
-    return (state.factsStore[modelName] ?? []) as T[];
-  }, [state.factsStore, modelName]);
+    return (state.entityStore[modelName] ?? []) as T[];
+  }, [state.entityStore, modelName]);
 
   // Get cache info
   const cache = state.listCache[modelName];
@@ -161,15 +164,25 @@ export function useList<T = Record<string, unknown>>(
 }
 
 /**
- * Get facts for a specific model from the Avatar state.
+ * Get entities for a specific model from the Avatar state.
  * 
  * This is a simple selector function for use outside of hooks.
+ */
+export function getModelEntities<T = Record<string, unknown>>(
+  state: AvatarState,
+  modelName: string
+): T[] {
+  return (state.entityStore[modelName] ?? []) as T[];
+}
+
+/**
+ * @deprecated Use getModelEntities instead
  */
 export function getModelFacts<T = Record<string, unknown>>(
   state: AvatarState,
   modelName: string
 ): T[] {
-  return (state.factsStore[modelName] ?? []) as T[];
+  return getModelEntities<T>(state, modelName);
 }
 
 /**
