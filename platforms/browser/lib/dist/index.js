@@ -26,6 +26,7 @@ export { AvatarClient } from './avatar';
 // React hooks
 export { useAvatar, AvatarProvider } from './hooks/useAvatar';
 export { useAgent } from './hooks/useAgent';
+export { useList, getModelFacts, getModelDefinition, } from './hooks/useList';
 // Components (re-export for convenience)
 export { UhumView } from './components/UhumView';
 export { MessageDisplay } from './components/MessageDisplay';

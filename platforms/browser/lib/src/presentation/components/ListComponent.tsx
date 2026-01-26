@@ -1,23 +1,46 @@
 /**
- * ListComponent - Vertical list of items
+ * ListComponent - Renders a list of items as a table.
  * 
- * Renders data as a vertical scrollable list with field columns.
- * Supports selection, actions, and field-based display.
+ * The default variant renders data as a responsive table.
+ * Uses model definitions (from dossier) for column headers if component 
+ * fields are not specified.
+ * 
+ * Features:
+ * - Table layout with sortable headers (future)
+ * - Row selection
+ * - Action buttons (global and per-row)
+ * - Loading and empty states
+ * - Responsive design
  */
 
 import React from 'react';
 import { ComponentRenderProps } from '../registry';
+import { DossierField, DossierModelField, DossierModel } from '../../types';
 
-export const ListComponent: React.FC<ComponentRenderProps> = ({
+/**
+ * Extended props for ListComponent that include model definition.
+ */
+export interface ListComponentProps extends ComponentRenderProps {
+  /** Model definition (from dossier) - used for column headers if fields not specified */
+  model?: DossierModel;
+  /** Whether data is currently loading */
+  loading?: boolean;
+}
+
+export const ListComponent: React.FC<ListComponentProps> = ({
   component,
   data,
+  model,
+  loading = false,
   onSelect,
   onIntent,
   className,
 }) => {
-  const fields = component.fields ?? [];
+  // Use component fields if specified, otherwise fall back to model fields
+  const fields = getFields(component.fields, model);
   const actions = component.actions ?? [];
   const globalActions = actions.filter(a => !a.requiresSelection);
+  const rowActions = actions.filter(a => a.requiresSelection);
 
   return (
     <div 
@@ -27,12 +50,14 @@ export const ListComponent: React.FC<ComponentRenderProps> = ({
       {/* Header */}
       {(component.title || globalActions.length > 0) && (
         <div className="uhum-list__header">
-          {component.title && (
-            <h2 className="uhum-list__title">{component.title}</h2>
-          )}
-          {component.description && (
-            <p className="uhum-list__description">{component.description}</p>
-          )}
+          <div className="uhum-list__header-text">
+            {component.title && (
+              <h2 className="uhum-list__title">{component.title}</h2>
+            )}
+            {component.description && (
+              <p className="uhum-list__description">{component.description}</p>
+            )}
+          </div>
           {globalActions.length > 0 && (
             <div className="uhum-list__actions">
               {globalActions.map((action, i) => (
@@ -50,50 +75,86 @@ export const ListComponent: React.FC<ComponentRenderProps> = ({
         </div>
       )}
 
-      {/* List items */}
-      <div className="uhum-list__items">
-        {data.length === 0 ? (
+      {/* Table */}
+      <div className="uhum-list__table-container">
+        {loading ? (
+          <div className="uhum-list__loading">
+            <span className="uhum-list__loading-spinner" />
+            <span className="uhum-list__loading-text">Loading...</span>
+          </div>
+        ) : data.length === 0 ? (
           <div className="uhum-list__empty">
             <span className="uhum-list__empty-icon">📋</span>
             <span className="uhum-list__empty-text">No items to display</span>
           </div>
         ) : (
-          data.map((item, index) => {
-            const itemObj = item as Record<string, unknown>;
-            const itemId = itemObj.id ?? itemObj._id ?? index;
+          <table className="uhum-list__table">
+            <thead className="uhum-list__thead">
+              <tr className="uhum-list__header-row">
+                {fields.map((field, i) => (
+                  <th 
+                    key={i} 
+                    className={`uhum-list__th uhum-list__th--${field.type}`}
+                    data-field={field.name}
+                    style={field.width ? { width: field.width } : undefined}
+                  >
+                    {field.label}
+                  </th>
+                ))}
+                {rowActions.length > 0 && (
+                  <th className="uhum-list__th uhum-list__th--actions">Actions</th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="uhum-list__tbody">
+              {data.map((item, index) => {
+                const itemObj = item as Record<string, unknown>;
+                const itemId = itemObj.id ?? itemObj._id ?? index;
 
-            return (
-              <div
-                key={String(itemId)}
-                className="uhum-list__item"
-                onClick={() => onSelect?.(item)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    onSelect?.(item);
-                  }
-                }}
-              >
-                <div className="uhum-list__item-content">
-                  {fields.map((field, fi) => (
-                    <div
-                      key={fi}
-                      className={`uhum-list__field uhum-list__field--${field.type}`}
-                      data-field={field.name}
-                      style={field.width ? { width: field.width } : undefined}
-                    >
-                      <span className="uhum-list__field-label">{field.label}</span>
-                      <span className="uhum-list__field-value">
+                return (
+                  <tr
+                    key={String(itemId)}
+                    className="uhum-list__row"
+                    onClick={() => onSelect?.(item)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        onSelect?.(item);
+                      }
+                    }}
+                  >
+                    {fields.map((field, fi) => (
+                      <td
+                        key={fi}
+                        className={`uhum-list__td uhum-list__td--${field.type}`}
+                        data-field={field.name}
+                      >
                         {formatValue(itemObj[field.name], field.type)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="uhum-list__item-arrow">›</div>
-              </div>
-            );
-          })
+                      </td>
+                    ))}
+                    {rowActions.length > 0 && (
+                      <td className="uhum-list__td uhum-list__td--actions">
+                        {rowActions.map((action, ai) => (
+                          <button
+                            key={ai}
+                            className={`uhum-btn uhum-btn--sm uhum-btn--${action.variant ?? 'secondary'}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onIntent?.(action.intent, itemObj);
+                            }}
+                          >
+                            {action.icon && <span className="uhum-btn__icon">{action.icon}</span>}
+                            {action.label}
+                          </button>
+                        ))}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
@@ -101,10 +162,44 @@ export const ListComponent: React.FC<ComponentRenderProps> = ({
 };
 
 /**
+ * Get fields from component or model definition.
+ * Component fields take priority over model fields.
+ */
+function getFields(
+  componentFields?: DossierField[],
+  model?: DossierModel
+): DossierField[] {
+  // If component has explicit fields, use them
+  if (componentFields && componentFields.length > 0) {
+    return componentFields;
+  }
+
+  // Fall back to model fields
+  if (model?.fields) {
+    return model.fields.map(modelFieldToComponentField);
+  }
+
+  // No fields available
+  return [];
+}
+
+/**
+ * Convert a model field to a component field.
+ */
+function modelFieldToComponentField(field: DossierModelField): DossierField {
+  return {
+    name: field.name,
+    type: field.type,
+    label: field.label,
+    reference: field.reference,
+  };
+}
+
+/**
  * Format a value for display based on its type.
  */
-function formatValue(value: unknown, type: string): string {
-  if (value === null || value === undefined) return '—';
+function formatValue(value: unknown, type: string): React.ReactNode {
+  if (value === null || value === undefined) return <span className="uhum-list__null">—</span>;
 
   switch (type) {
     case 'datetime':
@@ -112,11 +207,15 @@ function formatValue(value: unknown, type: string): string {
     case 'date':
       return formatDate(value);
     case 'boolean':
-      return value ? '✓' : '✗';
+      return (
+        <span className={`uhum-list__bool uhum-list__bool--${value ? 'true' : 'false'}`}>
+          {value ? '✓' : '✗'}
+        </span>
+      );
     case 'number':
       return typeof value === 'number' ? value.toLocaleString() : String(value);
     case 'atom':
-      return formatAtom(String(value));
+      return <span className="uhum-list__atom">{formatAtom(String(value))}</span>;
     default:
       return String(value);
   }

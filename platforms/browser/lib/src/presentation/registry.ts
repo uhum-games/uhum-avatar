@@ -30,7 +30,7 @@
  */
 
 import React from 'react';
-import { DossierComponent, DossierComponentType } from '../types';
+import { DossierComponent, DossierComponentType, DossierModel } from '../types';
 import { PresentationState } from './state';
 
 /**
@@ -45,6 +45,10 @@ export interface ComponentRenderProps {
   item?: unknown;
   /** Current presentation state */
   state: PresentationState;
+  /** Model definition (from dossier) - used for schema-based rendering */
+  model?: DossierModel;
+  /** Whether data is currently loading */
+  loading?: boolean;
   /** Callback when user selects an item */
   onSelect?: (item: unknown) => void;
   /** Callback to trigger an intent */

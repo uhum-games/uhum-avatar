@@ -233,13 +233,95 @@ body {
   background: var(--avatar-surface);
   border: 1px solid var(--avatar-border);
   border-radius: var(--avatar-radius-md);
-  padding: var(--avatar-spacing-sm);
+  padding: var(--avatar-spacing-md);
   margin-bottom: var(--avatar-spacing-md);
   font-family: var(--avatar-font-mono);
   font-size: 0.75rem;
   color: var(--avatar-text-muted);
 }
 
+/* Debug sections */
+.uhum-view-debug__section {
+  margin-bottom: var(--avatar-spacing-md);
+  padding-bottom: var(--avatar-spacing-md);
+  border-bottom: 1px dashed var(--avatar-border);
+}
+
+.uhum-view-debug__section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.uhum-view-debug__section-title {
+  font-weight: 600;
+  color: var(--avatar-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--avatar-spacing-sm);
+  font-size: 0.7rem;
+}
+
+/* Debug items */
+.uhum-view-debug__item {
+  display: flex;
+  gap: var(--avatar-spacing-sm);
+  margin: var(--avatar-spacing-xs) 0;
+  line-height: 1.4;
+}
+
+.uhum-view-debug__label {
+  color: var(--avatar-text-muted);
+  min-width: 80px;
+}
+
+.uhum-view-debug__value {
+  color: var(--avatar-text);
+  word-break: break-all;
+}
+
+.uhum-view-debug__count {
+  color: var(--avatar-success);
+  font-weight: 500;
+}
+
+.uhum-view-debug__empty {
+  color: var(--avatar-text-muted);
+  font-style: italic;
+}
+
+/* Model facts */
+.uhum-view-debug__model {
+  margin-left: var(--avatar-spacing-sm);
+  padding-left: var(--avatar-spacing-sm);
+  border-left: 2px solid var(--avatar-border);
+  margin-bottom: var(--avatar-spacing-sm);
+}
+
+.uhum-view-debug__facts {
+  margin-top: var(--avatar-spacing-xs);
+  margin-left: var(--avatar-spacing-md);
+}
+
+.uhum-view-debug__facts pre {
+  background: var(--avatar-bg);
+  padding: var(--avatar-spacing-xs) var(--avatar-spacing-sm);
+  border-radius: var(--avatar-radius-sm);
+  font-size: 0.65rem;
+  overflow-x: auto;
+  max-height: 120px;
+  overflow-y: auto;
+  margin: 0;
+}
+
+.uhum-view-debug__more {
+  font-style: italic;
+  color: var(--avatar-text-muted);
+  font-size: 0.65rem;
+  margin-top: var(--avatar-spacing-xs);
+}
+
+/* Legacy styles for backward compatibility */
 .uhum-view-debug__view,
 .uhum-view-debug__components,
 .uhum-view-debug__state {

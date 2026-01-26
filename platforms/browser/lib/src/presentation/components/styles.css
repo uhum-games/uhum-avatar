@@ -135,7 +135,7 @@
 }
 
 /* =============================================================================
-   List Component
+   List Component (Table Layout)
    ============================================================================= */
 
 .uhum-list {
@@ -152,6 +152,10 @@
   gap: var(--uhum-space-md);
   padding: var(--uhum-space-lg);
   border-bottom: 1px solid var(--uhum-border);
+}
+
+.uhum-list__header-text {
+  flex: 1;
 }
 
 .uhum-list__title {
@@ -172,6 +176,189 @@
   gap: var(--uhum-space-sm);
 }
 
+/* Table container */
+.uhum-list__table-container {
+  overflow-x: auto;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Table styles */
+.uhum-list__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--uhum-font-size-sm);
+}
+
+.uhum-list__thead {
+  position: sticky;
+  top: 0;
+  background: var(--uhum-bg-secondary);
+  z-index: 1;
+}
+
+.uhum-list__header-row {
+  border-bottom: 2px solid var(--uhum-border);
+}
+
+.uhum-list__th {
+  padding: var(--uhum-space-md) var(--uhum-space-md);
+  text-align: left;
+  font-weight: 600;
+  color: var(--uhum-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.uhum-list__th--number {
+  text-align: right;
+}
+
+.uhum-list__th--boolean {
+  text-align: center;
+}
+
+.uhum-list__th--actions {
+  text-align: right;
+  width: 1%;
+  white-space: nowrap;
+}
+
+.uhum-list__tbody .uhum-list__row {
+  border-bottom: 1px solid var(--uhum-border);
+  cursor: pointer;
+  transition: background-color var(--uhum-transition-fast);
+}
+
+.uhum-list__tbody .uhum-list__row:last-child {
+  border-bottom: none;
+}
+
+.uhum-list__tbody .uhum-list__row:hover {
+  background: var(--uhum-bg-hover);
+}
+
+.uhum-list__tbody .uhum-list__row:focus {
+  outline: 2px solid var(--uhum-primary);
+  outline-offset: -2px;
+  background: var(--uhum-bg-selected);
+}
+
+.uhum-list__td {
+  padding: var(--uhum-space-md);
+  color: var(--uhum-text);
+  vertical-align: middle;
+}
+
+.uhum-list__td--number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.uhum-list__td--boolean {
+  text-align: center;
+}
+
+.uhum-list__td--actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.uhum-list__td--actions .uhum-btn {
+  margin-left: var(--uhum-space-xs);
+}
+
+/* Value formatting */
+.uhum-list__null {
+  color: var(--uhum-text-muted);
+}
+
+.uhum-list__bool {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  border-radius: var(--uhum-radius-full);
+}
+
+.uhum-list__bool--true {
+  background: var(--uhum-success);
+  color: white;
+}
+
+.uhum-list__bool--false {
+  background: var(--uhum-bg-secondary);
+  color: var(--uhum-text-muted);
+}
+
+.uhum-list__atom {
+  display: inline-block;
+  padding: var(--uhum-space-xs) var(--uhum-space-sm);
+  background: var(--uhum-bg-secondary);
+  border-radius: var(--uhum-radius-full);
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+/* Small button variant for row actions */
+.uhum-btn--sm {
+  padding: var(--uhum-space-xs) var(--uhum-space-sm);
+  font-size: 0.8rem;
+}
+
+/* Loading state */
+.uhum-list__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--uhum-space-xl);
+  color: var(--uhum-text-muted);
+}
+
+.uhum-list__loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--uhum-border);
+  border-top-color: var(--uhum-primary);
+  border-radius: 50%;
+  animation: uhum-spin 0.8s linear infinite;
+  margin-bottom: var(--uhum-space-sm);
+}
+
+@keyframes uhum-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.uhum-list__loading-text {
+  font-size: var(--uhum-font-size-sm);
+}
+
+/* Empty state */
+.uhum-list__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--uhum-space-xl);
+  color: var(--uhum-text-muted);
+}
+
+.uhum-list__empty-icon {
+  font-size: 2em;
+  margin-bottom: var(--uhum-space-sm);
+}
+
+.uhum-list__empty-text {
+  font-size: var(--uhum-font-size-sm);
+}
+
+/* Legacy item-based layout (for backward compatibility) */
 .uhum-list__items {
   max-height: 500px;
   overflow-y: auto;
@@ -229,20 +416,6 @@
   color: var(--uhum-text-muted);
   font-size: 1.5em;
   padding-left: var(--uhum-space-md);
-}
-
-.uhum-list__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--uhum-space-xl);
-  color: var(--uhum-text-muted);
-}
-
-.uhum-list__empty-icon {
-  font-size: 2em;
-  margin-bottom: var(--uhum-space-sm);
 }
 
 /* =============================================================================

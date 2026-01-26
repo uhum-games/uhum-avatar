@@ -92,9 +92,11 @@ function getCornerPosition(corner, margin, width, height, windowWidth, windowHei
     };
     return positions[corner];
 }
-export function SmartChat({ mode = 'docked', dockPosition = 'bottom', initialCorner = 'bottom-right', dockedSize = 350, smartWidth = 380, smartHeight = 500, margin = 40, minMargin = 16, marginBreakpoint = 768, minimized = false, onMinimizedChange, onModeChange, onDockPositionChange, children, className = '', header, showModeToggle = true, showDockControls = true, }) {
+export function SmartChat({ mode = 'docked', dockPosition = 'bottom', initialCorner = 'bottom-right', dockedSize = 240, smartWidth = 380, smartHeight = 340, margin = 40, minMargin = 16, marginBreakpoint = 768, minimized = false, onMinimizedChange, onModeChange, onDockPositionChange, children, className = '', header, showModeToggle = true, showDockControls = true, }) {
     const containerRef = useRef(null);
     const headerRef = useRef(null);
+    // Track if this was a drag vs a click (for header click-to-toggle)
+    const wasDragging = useRef(false);
     // Window dimensions
     const [windowSize, setWindowSize] = useState({
         width: typeof window !== 'undefined' ? window.innerWidth : 1024,
@@ -185,17 +187,26 @@ export function SmartChat({ mode = 'docked', dockPosition = 'bottom', initialCor
             }));
         };
         const handleEnd = () => {
-            // Calculate target corner based on trajectory
-            const targetCorner = calculateTargetCorner(dragState.trajectory, dragState.currentX, dragState.currentY, windowSize.width, windowSize.height);
-            // Animate to corner
-            setIsTransitioning(true);
-            setCurrentCorner(targetCorner);
-            const targetPos = getCornerPosition(targetCorner, effectiveMargin, smartWidth, smartHeight, windowSize.width, windowSize.height);
-            setPosition(targetPos);
+            // Check if this was an actual drag (moved more than a few pixels)
+            const totalMovement = dragState.trajectory.length > 1
+                ? Math.abs(dragState.trajectory[dragState.trajectory.length - 1].x - dragState.trajectory[0].x) +
+                    Math.abs(dragState.trajectory[dragState.trajectory.length - 1].y - dragState.trajectory[0].y)
+                : 0;
+            const wasActualDrag = totalMovement > 5;
+            if (wasActualDrag) {
+                wasDragging.current = true;
+                // Only update corner if user actually dragged
+                const targetCorner = calculateTargetCorner(dragState.trajectory, dragState.currentX, dragState.currentY, windowSize.width, windowSize.height);
+                // Animate to corner
+                setIsTransitioning(true);
+                setCurrentCorner(targetCorner);
+                const targetPos = getCornerPosition(targetCorner, effectiveMargin, smartWidth, smartHeight, windowSize.width, windowSize.height);
+                setPosition(targetPos);
+                // End transition after animation
+                setTimeout(() => setIsTransitioning(false), 300);
+            }
             // Reset drag state
             setDragState(initialDragState);
-            // End transition after animation
-            setTimeout(() => setIsTransitioning(false), 300);
         };
         document.addEventListener('mousemove', handleMove);
         document.addEventListener('mouseup', handleEnd);
@@ -210,9 +221,23 @@ export function SmartChat({ mode = 'docked', dockPosition = 'bottom', initialCor
     }, [dragState, windowSize, smartWidth, smartHeight, effectiveMargin, minimized]);
     // Toggle minimized
     const toggleMinimized = useCallback((e) => {
-        e.stopPropagation();
+        e?.stopPropagation();
         onMinimizedChange?.(!minimized);
     }, [minimized, onMinimizedChange]);
+    // Handle header click (toggle minimized if not dragging)
+    const handleHeaderClick = useCallback((e) => {
+        // Don't toggle if clicking on a button or interactive element
+        const target = e.target;
+        if (target.closest('button') || target.closest('a') || target.closest('input')) {
+            return;
+        }
+        // Don't toggle if we just finished dragging
+        if (wasDragging.current) {
+            wasDragging.current = false;
+            return;
+        }
+        toggleMinimized();
+    }, [toggleMinimized]);
     // Toggle mode
     const toggleMode = useCallback((e) => {
         e.stopPropagation();
@@ -281,7 +306,7 @@ export function SmartChat({ mode = 'docked', dockPosition = 'bottom', initialCor
         }
         return { '--smart-chat-docked-size': `${dockedSize}px` };
     }, [mode, dockPosition, dockedSize]);
-    return (_jsxs("div", { ref: containerRef, className: containerClasses, style: { ...containerStyle, ...dockedStyle }, children: [_jsxs("div", { ref: headerRef, className: "smart-chat__header", onMouseDown: handleDragStart, onTouchStart: handleDragStart, children: [_jsx("div", { className: "smart-chat__header-content", children: header || _jsx("span", { className: "smart-chat__header-title", children: "Chat" }) }), _jsxs("div", { className: "smart-chat__header-controls", children: [showDockControls && mode === 'docked' && (_jsx("button", { className: "smart-chat__control-btn", onClick: cycleDockPosition, title: `Dock position: ${dockPosition}`, "aria-label": "Change dock position", children: _jsx(DockIcon, { position: dockPosition }) })), showModeToggle && (_jsx("button", { className: "smart-chat__control-btn", onClick: toggleMode, title: mode === 'docked' ? 'Switch to Smart Mode' : 'Switch to Docked Mode', "aria-label": mode === 'docked' ? 'Switch to floating mode' : 'Switch to docked mode', children: mode === 'docked' ? _jsx(FloatIcon, {}) : _jsx(DockIcon, { position: "bottom" }) })), _jsx("button", { className: "smart-chat__control-btn", onClick: toggleMinimized, title: minimized ? 'Expand' : 'Minimize', "aria-label": minimized ? 'Expand chat' : 'Minimize chat', children: minimized ? _jsx(ExpandIcon, {}) : _jsx(MinimizeIcon, {}) })] }), mode === 'smart' && !minimized && (_jsxs("div", { className: "smart-chat__drag-indicator", "aria-hidden": "true", children: [_jsx("span", {}), _jsx("span", {}), _jsx("span", {})] }))] }), _jsx("div", { className: "smart-chat__body", children: children })] }));
+    return (_jsxs("div", { ref: containerRef, className: containerClasses, style: { ...containerStyle, ...dockedStyle }, children: [_jsxs("div", { ref: headerRef, className: "smart-chat__header", onMouseDown: handleDragStart, onTouchStart: handleDragStart, onClick: handleHeaderClick, children: [_jsx("div", { className: "smart-chat__header-content", children: header || _jsx("span", { className: "smart-chat__header-title", children: "Chat" }) }), _jsxs("div", { className: "smart-chat__header-controls", children: [showDockControls && mode === 'docked' && (_jsx("button", { className: "smart-chat__control-btn", onClick: cycleDockPosition, title: `Dock position: ${dockPosition}`, "aria-label": "Change dock position", children: _jsx(DockIcon, { position: dockPosition }) })), showModeToggle && (_jsx("button", { className: "smart-chat__control-btn", onClick: toggleMode, title: mode === 'docked' ? 'Switch to Smart Mode' : 'Switch to Docked Mode', "aria-label": mode === 'docked' ? 'Switch to floating mode' : 'Switch to docked mode', children: mode === 'docked' ? _jsx(FloatIcon, {}) : _jsx(DockIcon, { position: "bottom" }) })), _jsx("button", { className: "smart-chat__control-btn", onClick: toggleMinimized, title: minimized ? 'Expand' : 'Minimize', "aria-label": minimized ? 'Expand chat' : 'Minimize chat', children: minimized ? _jsx(ExpandIcon, {}) : _jsx(MinimizeIcon, {}) })] }), mode === 'smart' && !minimized && (_jsxs("div", { className: "smart-chat__drag-indicator", "aria-hidden": "true", children: [_jsx("span", {}), _jsx("span", {}), _jsx("span", {})] }))] }), _jsx("div", { className: "smart-chat__body", children: children })] }));
 }
 // Icon components
 function DockIcon({ position }) {

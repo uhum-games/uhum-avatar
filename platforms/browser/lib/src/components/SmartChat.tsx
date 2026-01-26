@@ -194,9 +194,9 @@ export function SmartChat({
   mode = 'docked',
   dockPosition = 'bottom',
   initialCorner = 'bottom-right',
-  dockedSize = 350,
+  dockedSize = 240,
   smartWidth = 380,
-  smartHeight = 500,
+  smartHeight = 340,
   margin = 40,
   minMargin = 16,
   marginBreakpoint = 768,
@@ -212,6 +212,9 @@ export function SmartChat({
 }: SmartChatProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+  
+  // Track if this was a drag vs a click (for header click-to-toggle)
+  const wasDragging = useRef(false);
 
   // Window dimensions
   const [windowSize, setWindowSize] = useState({
@@ -338,35 +341,47 @@ export function SmartChat({
     };
 
     const handleEnd = () => {
-      // Calculate target corner based on trajectory
-      const targetCorner = calculateTargetCorner(
-        dragState.trajectory,
-        dragState.currentX,
-        dragState.currentY,
-        windowSize.width,
-        windowSize.height
-      );
+      // Check if this was an actual drag (moved more than a few pixels)
+      const totalMovement = dragState.trajectory.length > 1 
+        ? Math.abs(dragState.trajectory[dragState.trajectory.length - 1].x - dragState.trajectory[0].x) +
+          Math.abs(dragState.trajectory[dragState.trajectory.length - 1].y - dragState.trajectory[0].y)
+        : 0;
+      
+      const wasActualDrag = totalMovement > 5;
+      
+      if (wasActualDrag) {
+        wasDragging.current = true;
+        
+        // Only update corner if user actually dragged
+        const targetCorner = calculateTargetCorner(
+          dragState.trajectory,
+          dragState.currentX,
+          dragState.currentY,
+          windowSize.width,
+          windowSize.height
+        );
 
-      // Animate to corner
-      setIsTransitioning(true);
-      setCurrentCorner(targetCorner);
+        // Animate to corner
+        setIsTransitioning(true);
+        setCurrentCorner(targetCorner);
 
-      const targetPos = getCornerPosition(
-        targetCorner,
-        effectiveMargin,
-        smartWidth,
-        smartHeight,
-        windowSize.width,
-        windowSize.height
-      );
+        const targetPos = getCornerPosition(
+          targetCorner,
+          effectiveMargin,
+          smartWidth,
+          smartHeight,
+          windowSize.width,
+          windowSize.height
+        );
 
-      setPosition(targetPos);
+        setPosition(targetPos);
+
+        // End transition after animation
+        setTimeout(() => setIsTransitioning(false), 300);
+      }
 
       // Reset drag state
       setDragState(initialDragState);
-
-      // End transition after animation
-      setTimeout(() => setIsTransitioning(false), 300);
     };
 
     document.addEventListener('mousemove', handleMove);
@@ -383,10 +398,27 @@ export function SmartChat({
   }, [dragState, windowSize, smartWidth, smartHeight, effectiveMargin, minimized]);
 
   // Toggle minimized
-  const toggleMinimized = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleMinimized = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
     onMinimizedChange?.(!minimized);
   }, [minimized, onMinimizedChange]);
+
+  // Handle header click (toggle minimized if not dragging)
+  const handleHeaderClick = useCallback((e: React.MouseEvent) => {
+    // Don't toggle if clicking on a button or interactive element
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('a') || target.closest('input')) {
+      return;
+    }
+    
+    // Don't toggle if we just finished dragging
+    if (wasDragging.current) {
+      wasDragging.current = false;
+      return;
+    }
+    
+    toggleMinimized();
+  }, [toggleMinimized]);
 
   // Toggle mode
   const toggleMode = useCallback((e: React.MouseEvent) => {
@@ -488,6 +520,7 @@ export function SmartChat({
         className="smart-chat__header"
         onMouseDown={handleDragStart}
         onTouchStart={handleDragStart}
+        onClick={handleHeaderClick}
       >
         <div className="smart-chat__header-content">
           {header || <span className="smart-chat__header-title">Chat</span>}

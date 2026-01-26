@@ -53,6 +53,12 @@
   border-bottom: 1px solid var(--smart-chat-border);
   user-select: none;
   position: relative;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.smart-chat__header:hover {
+  background: color-mix(in srgb, var(--smart-chat-header-bg) 90%, var(--smart-chat-text) 10%);
 }
 
 .smart-chat__header-content {
@@ -152,7 +158,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: var(--smart-chat-docked-size, 350px);
+  height: var(--smart-chat-docked-size, 240px);
   border-left: none;
   border-right: none;
   border-bottom: none;
@@ -164,7 +170,7 @@
   left: 0;
   right: 0;
   top: 0;
-  height: var(--smart-chat-docked-size, 350px);
+  height: var(--smart-chat-docked-size, 240px);
   border-left: none;
   border-right: none;
   border-top: none;
@@ -176,7 +182,7 @@
   left: 0;
   top: 0;
   bottom: 0;
-  width: var(--smart-chat-docked-size, 350px);
+  width: var(--smart-chat-docked-size, 240px);
   border-left: none;
   border-top: none;
   border-bottom: none;
@@ -188,7 +194,7 @@
   right: 0;
   top: 0;
   bottom: 0;
-  width: var(--smart-chat-docked-size, 350px);
+  width: var(--smart-chat-docked-size, 240px);
   border-right: none;
   border-top: none;
   border-bottom: none;
@@ -199,7 +205,7 @@
 .smart-chat--smart {
   position: fixed;
   width: var(--smart-chat-width, 380px);
-  height: var(--smart-chat-height, 500px);
+  height: var(--smart-chat-height, 340px);
   transform: translate(var(--smart-chat-x, 0), var(--smart-chat-y, 0));
   top: 0;
   left: 0;
@@ -323,19 +329,19 @@
 @media (max-width: 768px) {
   .smart-chat--smart {
     --smart-chat-width: calc(100vw - 32px);
-    --smart-chat-height: 60vh;
+    --smart-chat-height: 40vh;
   }
 }
 
 @media (max-width: 480px) {
   /* Force docked mode on very small screens */
   .smart-chat--docked {
-    --smart-chat-docked-size: 50vh;
+    --smart-chat-docked-size: 35vh;
   }
 
   .smart-chat--smart {
     --smart-chat-width: calc(100vw - 24px);
-    --smart-chat-height: 50vh;
+    --smart-chat-height: 35vh;
   }
 }
 

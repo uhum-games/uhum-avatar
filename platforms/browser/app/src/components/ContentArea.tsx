@@ -45,6 +45,7 @@ export function ContentArea({ state }: ContentAreaProps) {
     views: state.dossier?.presentation?.views,
     components: state.dossier?.presentation?.components,
     factsCount: state.facts.length,
+    factsStoreKeys: Object.keys(state.factsStore),
   });
 
   // Render using ViewRenderer if we have presentation data
@@ -53,7 +54,9 @@ export function ContentArea({ state }: ContentAreaProps) {
       <div className="avatar-content">
         <ViewRenderer
           presentation={state.dossier?.presentation}
+          models={state.dossier?.models}
           facts={state.facts}
+          factsStore={state.factsStore}
           onIntent={handleIntent}
           debug={true} // Enable debug for development
           className="avatar-view-renderer"

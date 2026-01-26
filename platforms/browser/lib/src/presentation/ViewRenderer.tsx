@@ -18,6 +18,7 @@ import {
   DossierPresentation,
   DossierComponent,
   DossierView,
+  DossierModel,
 } from '../types';
 import {
   PresentationState,
@@ -54,13 +55,24 @@ registerComponent('dashboard', DashboardComponent);
 registerComponent('chat', ChatComponent);
 
 /**
+ * Facts store organized by model type.
+ */
+export interface FactsStore {
+  [model: string]: Record<string, unknown>[];
+}
+
+/**
  * Props for the ViewRenderer component.
  */
 export interface ViewRendererProps {
   /** Presentation hints from dossier */
   presentation?: DossierPresentation;
-  /** Facts (data) from the Brain */
+  /** Model definitions from dossier (at dossier root, not in presentation) */
+  models?: DossierModel[];
+  /** Facts (data) from the Brain (legacy array) */
   facts: unknown[];
+  /** Facts organized by model (new structure) */
+  factsStore?: FactsStore;
   /** Callback when user triggers an intent */
   onIntent?: (intent: string, params?: Record<string, unknown>) => void;
   /** Enable debug mode */
@@ -98,7 +110,9 @@ export interface ViewRendererProps {
  */
 export function ViewRenderer({
   presentation,
+  models,
   facts,
+  factsStore,
   onIntent,
   debug = false,
   className,
@@ -192,6 +206,13 @@ export function ViewRenderer({
     [onIntent, debug]
   );
 
+  // Get model definition for a component
+  const getModel = useCallback((component: DossierComponent) => {
+    const modelName = component.source;
+    if (!modelName || !models) return undefined;
+    return models.find(m => m.name === modelName);
+  }, [models]);
+
   // Render components for the current view
   const renderComponents = useCallback(() => {
     const { components, layout } = viewSelection;
@@ -217,15 +238,19 @@ export function ViewRenderer({
             return null;
           }
 
-          // Get data for this component
+          // Get data for this component from factsStore (new) or legacy facts array
           const componentData = filterFactsBySource(facts, component);
           const contextItem = getContextItem(facts, component, presentationState);
+          
+          // Get model definition for schema-based rendering
+          const model = getModel(component);
 
           const props: ComponentRenderProps = {
             component,
             data: componentData,
             item: contextItem ?? undefined,
             state: presentationState,
+            model, // Pass model definition
             onSelect: (item) => handleSelect(component, item),
             onIntent: handleIntent,
             className: '',
@@ -239,22 +264,100 @@ export function ViewRenderer({
         })}
       </div>
     );
-  }, [viewSelection, facts, presentationState, handleSelect, handleIntent, debug]);
+  }, [viewSelection, facts, presentationState, handleSelect, handleIntent, getModel, debug]);
+
+  // Get model names for debug display
+  const modelNames = models?.map(m => m.name) ?? [];
 
   return (
     <div className={`uhum-view-renderer ${className ?? ''}`}>
       {/* Debug info */}
       {debug && (
         <div className="uhum-view-debug">
-          <div className="uhum-view-debug__view">
-            View: {viewSelection.view?.name ?? 'none'} ({viewSelection.reason})
+          {/* Presentation Section */}
+          <div className="uhum-view-debug__section">
+            <div className="uhum-view-debug__section-title">Presentation</div>
+            <div className="uhum-view-debug__item">
+              <span className="uhum-view-debug__label">View:</span>
+              <span className="uhum-view-debug__value">
+                {viewSelection.view?.name ?? 'none'} ({viewSelection.reason})
+              </span>
+            </div>
+            <div className="uhum-view-debug__item">
+              <span className="uhum-view-debug__label">Components:</span>
+              <span className="uhum-view-debug__value">
+                {viewSelection.components.map(c => c.name).join(', ') || 'none'}
+              </span>
+            </div>
+            <div className="uhum-view-debug__item">
+              <span className="uhum-view-debug__label">State:</span>
+              <span className="uhum-view-debug__value">
+                {JSON.stringify(presentationState)}
+              </span>
+            </div>
           </div>
-          <div className="uhum-view-debug__components">
-            Components: {viewSelection.components.map(c => c.name).join(', ') || 'none'}
+
+          {/* Facts Section (by model) */}
+          <div className="uhum-view-debug__section">
+            <div className="uhum-view-debug__section-title">Facts (by Model)</div>
+            {modelNames.length === 0 && !factsStore ? (
+              <div className="uhum-view-debug__item uhum-view-debug__empty">
+                No models defined
+              </div>
+            ) : (
+              <>
+                {/* Show facts for each model */}
+                {modelNames.map(modelName => {
+                  const modelFacts = factsStore?.[modelName] ?? [];
+                  return (
+                    <div key={modelName} className="uhum-view-debug__model">
+                      <div className="uhum-view-debug__item">
+                        <span className="uhum-view-debug__label">{modelName}:</span>
+                        <span className="uhum-view-debug__value uhum-view-debug__count">
+                          {modelFacts.length} {modelFacts.length === 1 ? 'item' : 'items'}
+                        </span>
+                      </div>
+                      {modelFacts.length > 0 && (
+                        <div className="uhum-view-debug__facts">
+                          <pre>{JSON.stringify(modelFacts.slice(0, 3), null, 2)}</pre>
+                          {modelFacts.length > 3 && (
+                            <div className="uhum-view-debug__more">
+                              ...and {modelFacts.length - 3} more
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Show any unmodeled facts from factsStore */}
+                {factsStore && Object.keys(factsStore).filter(k => !modelNames.includes(k)).map(key => {
+                  const otherFacts = factsStore[key];
+                  return (
+                    <div key={key} className="uhum-view-debug__model">
+                      <div className="uhum-view-debug__item">
+                        <span className="uhum-view-debug__label">{key} (unmodeled):</span>
+                        <span className="uhum-view-debug__value uhum-view-debug__count">
+                          {otherFacts.length} {otherFacts.length === 1 ? 'item' : 'items'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
-          <div className="uhum-view-debug__state">
-            State: {JSON.stringify(presentationState)}
-          </div>
+
+          {/* Legacy facts (if any) */}
+          {facts.length > 0 && (
+            <div className="uhum-view-debug__section">
+              <div className="uhum-view-debug__section-title">Legacy Facts</div>
+              <div className="uhum-view-debug__item">
+                <span className="uhum-view-debug__label">Count:</span>
+                <span className="uhum-view-debug__value">{facts.length}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

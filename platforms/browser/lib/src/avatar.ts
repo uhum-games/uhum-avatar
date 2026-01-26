@@ -15,6 +15,7 @@ import {
   MessageType,
   createInitialState,
   avatarReducer,
+  DossierModel,
 } from './types';
 import {
   parseMessage,
@@ -31,6 +32,64 @@ import {
   UhumMessage,
   Term,
 } from './protocol';
+
+/**
+ * Convert a fact Term to a proper object using model schema.
+ * 
+ * A fact like `book("Title", "Author", 1999, read)` becomes:
+ * `{ title: "Title", author: "Author", year: 1999, status: "read" }`
+ */
+function termToFactObject(term: Term, model?: DossierModel): Record<string, unknown> {
+  if (term.type !== 'compound') {
+    return { value: termToObject(term) };
+  }
+
+  const functor = term.functor;
+  const args = term.args;
+
+  // If we have a model schema, use it to create named fields
+  if (model && model.fields.length === args.length) {
+    const obj: Record<string, unknown> = { _type: functor };
+    for (let i = 0; i < model.fields.length; i++) {
+      const field = model.fields[i];
+      const value = args[i];
+      obj[field.name] = termToObject(value);
+    }
+    return obj;
+  }
+
+  // Fallback: create numbered fields
+  const obj: Record<string, unknown> = { _type: functor };
+  for (let i = 0; i < args.length; i++) {
+    obj[`arg${i}`] = termToObject(args[i]);
+  }
+  return obj;
+}
+
+/**
+ * Group facts by their model (functor name).
+ */
+function groupFactsByModel(
+  facts: Term[],
+  models?: DossierModel[]
+): Map<string, Record<string, unknown>[]> {
+  const groups = new Map<string, Record<string, unknown>[]>();
+
+  for (const fact of facts) {
+    if (fact.type !== 'compound') continue;
+
+    const modelName = fact.functor;
+    const model = models?.find(m => m.name === modelName);
+    const factObj = termToFactObject(fact, model);
+
+    if (!groups.has(modelName)) {
+      groups.set(modelName, []);
+    }
+    groups.get(modelName)!.push(factObj);
+  }
+
+  return groups;
+}
 
 /**
  * Reconnection configuration.
@@ -572,8 +631,19 @@ export class AvatarClient {
     // Extract facts
     const facts = extractDecisionFacts(message.body);
     if (facts.length > 0) {
+      // Get model definitions from dossier (if available)
+      const models = this.state.dossier?.models;
+
+      // Group facts by model and sync to factsStore
+      const factsByModel = groupFactsByModel(facts, models);
+      for (const [modelName, modelFacts] of factsByModel) {
+        this.log(`Syncing ${modelFacts.length} facts for model "${modelName}"`);
+        this.dispatch({ type: 'SYNC_FACTS', model: modelName, facts: modelFacts });
+      }
+
+      // Also update legacy facts array for backward compatibility
       const factsAsObjects = facts.map(termToObject);
-      this.log('Decision facts:', factsAsObjects);
+      this.log('Decision facts (legacy):', factsAsObjects);
       this.dispatch({ type: 'UPDATE_FACTS', facts: factsAsObjects });
     }
 
@@ -615,11 +685,22 @@ export class AvatarClient {
 
     if (!message.body) return;
 
-    // Extract events
+    // Extract events (which are facts)
     const events = extractMemoryEvents(message.body);
     if (events.length > 0) {
+      // Get model definitions from dossier (if available)
+      const models = this.state.dossier?.models;
+
+      // Group events/facts by model and sync to factsStore
+      const factsByModel = groupFactsByModel(events, models);
+      for (const [modelName, modelFacts] of factsByModel) {
+        this.log(`Syncing ${modelFacts.length} memory events for model "${modelName}"`);
+        this.dispatch({ type: 'SYNC_FACTS', model: modelName, facts: modelFacts });
+      }
+
+      // Also update legacy facts array for backward compatibility
       const eventsAsObjects = events.map(termToObject);
-      this.log('Memory events:', eventsAsObjects);
+      this.log('Memory events (legacy):', eventsAsObjects);
       this.dispatch({ type: 'UPDATE_FACTS', facts: eventsAsObjects });
     }
   }

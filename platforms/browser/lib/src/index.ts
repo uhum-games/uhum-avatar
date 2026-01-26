@@ -47,11 +47,26 @@ export type {
   DossierViewAction,
   DossierViewFilter,
   DossierLayoutHint,
+  // New types
+  DossierModel,
+  DossierModelField,
+  DossierComponent,
+  DossierField,
+  DossierFieldType,
+  FactsStore,
+  ListCache,
 } from './types';
 
 // React hooks
 export { useAvatar, AvatarProvider, type AvatarContextValue } from './hooks/useAvatar';
 export { useAgent, type UseAgentResult } from './hooks/useAgent';
+export {
+  useList,
+  getModelFacts,
+  getModelDefinition,
+  type UseListOptions,
+  type UseListResult,
+} from './hooks/useList';
 
 // Components (re-export for convenience)
 export { UhumView } from './components/UhumView';

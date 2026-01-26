@@ -14,7 +14,9 @@ export function createInitialState() {
         modal: null,
         focusedElement: null,
         highlightedElements: new Set(),
-        facts: [],
+        factsStore: {},
+        facts: [], // Legacy, for backward compatibility
+        listCache: {},
         connected: false,
         agentId: null,
         connectionState: 'disconnected',
@@ -96,10 +98,60 @@ export function avatarReducer(state, action) {
             return { ...state, loading: { message: action.message } };
         case 'HIDE_LOADING':
             return { ...state, loading: null };
+        // Legacy facts actions (backward compatibility)
         case 'UPDATE_FACTS':
             return { ...state, facts: action.facts };
         case 'CLEAR_FACTS':
             return { ...state, facts: [] };
+        // New facts sync actions (organized by model)
+        case 'SYNC_FACTS': {
+            const newFactsStore = {
+                ...state.factsStore,
+                [action.model]: action.facts,
+            };
+            return {
+                ...state,
+                factsStore: newFactsStore,
+                // Update list cache timestamp
+                listCache: {
+                    ...state.listCache,
+                    [action.model]: {
+                        ...state.listCache[action.model],
+                        updatedAt: Date.now(),
+                        loading: false,
+                    },
+                },
+            };
+        }
+        case 'CLEAR_MODEL_FACTS': {
+            const newFactsStore = { ...state.factsStore };
+            delete newFactsStore[action.model];
+            return { ...state, factsStore: newFactsStore };
+        }
+        case 'CLEAR_ALL_FACTS':
+            return { ...state, factsStore: {}, listCache: {} };
+        // List cache actions
+        case 'SET_LIST_LOADING': {
+            return {
+                ...state,
+                listCache: {
+                    ...state.listCache,
+                    [action.model]: {
+                        intent: action.intent,
+                        model: action.model,
+                        updatedAt: state.listCache[action.model]?.updatedAt ?? 0,
+                        loading: action.loading,
+                    },
+                },
+            };
+        }
+        case 'INVALIDATE_LIST_CACHE': {
+            const newCache = { ...state.listCache };
+            delete newCache[action.model];
+            return { ...state, listCache: newCache };
+        }
+        case 'INVALIDATE_ALL_LIST_CACHE':
+            return { ...state, listCache: {} };
         case 'SET_CONNECTED':
             return {
                 ...state,

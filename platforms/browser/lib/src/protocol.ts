@@ -735,6 +735,9 @@ import type {
   DossierViewFilter,
   DossierViewType,
   DossierLayoutHint,
+  // Model types
+  DossierModel,
+  DossierModelField,
   // Component types
   DossierComponent,
   DossierComponentType,
@@ -812,6 +815,7 @@ export function extractDossierFromWelcome(body: Term): AgentDossier | null {
 
   let identity: DossierIdentity = { id: agentId, name: agentId, version: agentVersion };
   let intents: DossierIntent[] = [];
+  let models: DossierModel[] | undefined;
   let presentation: DossierPresentation | undefined;
 
   for (const item of dossierList.items) {
@@ -824,13 +828,16 @@ export function extractDossierFromWelcome(body: Term): AgentDossier | null {
       case 'intents':
         intents = parseIntents(item.args[0]);
         break;
+      case 'models':
+        models = parseModels(item.args[0]);
+        break;
       case 'presentation':
         presentation = parsePresentation(item.args[0]);
         break;
     }
   }
 
-  return { identity, intents, presentation };
+  return { identity, intents, models, presentation };
 }
 
 /**
@@ -961,6 +968,8 @@ function parseParams(term: Term | undefined): DossierParam[] {
  * - views([view(...), ...]) - Composition of components
  * - home([...]) - Landing page configuration
  * - layouts([layout_hint(...), ...]) - Layout hints
+ * 
+ * Note: models are at dossier root, not in presentation.
  */
 function parsePresentation(term: Term | undefined): DossierPresentation | undefined {
   if (!term || term.type !== 'list') return undefined;
@@ -1038,6 +1047,100 @@ function parseBrand(term: Term | undefined): DossierBrand | undefined {
   }
 
   return Object.keys(brand).length > 0 ? brand : undefined;
+}
+
+// =============================================================================
+// Model Parsing
+// =============================================================================
+
+/**
+ * Parse model definitions.
+ * 
+ * Models define the schema for facts (data structure).
+ * 
+ * Format:
+ * ```prolog
+ * models([
+ *     model(book, [
+ *         field(title, string, "Book title"),
+ *         field(author, string, "Author name"),
+ *         field(year, number, "Publication year"),
+ *         field(status, atom, "Reading status")
+ *     ]),
+ *     model(genre, [
+ *         field(book_title, string, "Reference to book"),
+ *         field(genre, atom, "Genre category")
+ *     ])
+ * ])
+ * ```
+ */
+function parseModels(term: Term | undefined): DossierModel[] | undefined {
+  if (!term || term.type !== 'list') return undefined;
+
+  const models: DossierModel[] = [];
+
+  for (const item of term.items) {
+    if (item.type !== 'compound' || item.functor !== 'model') continue;
+    
+    const model = parseModel(item);
+    if (model) models.push(model);
+  }
+
+  return models.length > 0 ? models : undefined;
+}
+
+/**
+ * Parse a single model definition.
+ * 
+ * Format: model(name, [field(...), field(...), ...])
+ */
+function parseModel(term: Term): DossierModel | null {
+  if (term.type !== 'compound' || term.functor !== 'model') return null;
+  if (term.args.length < 2) return null;
+
+  const name = extractString(term.args[0]);
+  if (!name) return null;
+
+  const fieldsList = term.args[1];
+  if (fieldsList?.type !== 'list') return null;
+
+  const fields: DossierModelField[] = [];
+  for (const fieldTerm of fieldsList.items) {
+    if (fieldTerm.type !== 'compound' || fieldTerm.functor !== 'field') continue;
+    
+    const field = parseModelField(fieldTerm);
+    if (field) fields.push(field);
+  }
+
+  return { name, fields };
+}
+
+/**
+ * Parse a model field definition.
+ * 
+ * Format: field(name, type, label) or field(name, type, label, reference(model))
+ */
+function parseModelField(term: Term): DossierModelField | null {
+  if (term.type !== 'compound' || term.functor !== 'field') return null;
+  if (term.args.length < 3) return null;
+
+  const name = extractString(term.args[0]);
+  const type = extractString(term.args[1]) as DossierModelField['type'];
+  const label = extractString(term.args[2]);
+
+  if (!name || !type || !label) return null;
+
+  const field: DossierModelField = { name, type, label };
+
+  // Check for reference (optional 4th arg)
+  if (term.args.length >= 4) {
+    const refTerm = term.args[3];
+    if (refTerm?.type === 'compound' && refTerm.functor === 'reference') {
+      field.reference = extractString(refTerm.args[0]) || undefined;
+    }
+  }
+
+  return field;
 }
 
 // =============================================================================
@@ -1160,6 +1263,10 @@ function parseComponents(term: Term | undefined): DossierComponent[] | undefined
           case 'context':
             // context(selected_book) - the context variable this component depends on
             component.context = extractString(prop.args[0]) || undefined;
+            break;
+          case 'list_intent':
+            // list_intent(list_books) - intent to trigger for fetching list data
+            component.listIntent = extractString(prop.args[0]) || undefined;
             break;
           case 'icon':
             component.icon = extractString(prop.args[0]) || undefined;

@@ -80,7 +80,7 @@ export interface DossierHomeSection {
     actions?: string[];
 }
 /**
- * Field types supported by components.
+ * Field types supported by models and components.
  *
  * - `string` - Text value
  * - `number` - Numeric value
@@ -92,6 +92,43 @@ export interface DossierHomeSection {
  * - `model` - Reference to another model (foreign key)
  */
 export type DossierFieldType = 'string' | 'number' | 'atom' | 'text' | 'datetime' | 'date' | 'boolean' | 'model';
+/**
+ * Model field definition.
+ *
+ * Defines a single field in a model schema.
+ */
+export interface DossierModelField {
+    /** Field name (positional in the fact) */
+    name: string;
+    /** Field data type */
+    type: DossierFieldType;
+    /** Human-readable label */
+    label: string;
+    /** For model type: the referenced model name */
+    reference?: string;
+}
+/**
+ * Model definition - schema for a type of fact.
+ *
+ * Models define the structure of facts stored in the Brain.
+ * They are used by components to understand the data shape.
+ *
+ * @example
+ * ```prolog
+ * model(book, [
+ *     field(title, string, "Book title"),
+ *     field(author, string, "Author name"),
+ *     field(year, number, "Publication year"),
+ *     field(status, atom, "Reading status: unread | reading | read")
+ * ]).
+ * ```
+ */
+export interface DossierModel {
+    /** Model name (fact functor) */
+    name: string;
+    /** Field definitions (ordered, positional) */
+    fields: DossierModelField[];
+}
 /**
  * Field definition for components.
  *
@@ -194,6 +231,8 @@ export interface DossierComponent {
     source?: string;
     /** Context variable this component depends on */
     context?: string;
+    /** Intent to trigger for fetching list data (for list/grid components) */
+    listIntent?: string;
     /** Field definitions */
     fields?: DossierField[];
     /** Available actions */
@@ -350,6 +389,7 @@ export interface DossierLayoutHint {
  *
  * Contains all UI-related hints from the agent:
  * - **Brand** - Visual identity (colors, logo, greetings)
+ * - **Models** - Data schemas (defines the structure of facts)
  * - **State** - UI state schema (controls which views/components are shown)
  * - **Components** - Reusable UI building blocks (list, detail, form, etc.)
  * - **Views** - Composition of components (which components to show together)
@@ -359,10 +399,14 @@ export interface DossierLayoutHint {
  * ## Architecture
  *
  * ```
+ * Models (data schemas)
+ *   ├── book (title, author, year, status)
+ *   └── genre (book_title, genre)
+ *
  * State (UI only) ──────────────────────────────────────────────────┐
  *                                                                   │
  * Components (building blocks)                                      │
- *   ├── books (list of books)                                       │
+ *   ├── books (list of books) ─────────── uses model: book         │
  *   ├── book_detail (single book) ─────────── depends on ───────────┤
  *   └── add_book_form (create form)                                 │
  *                                                                   │
@@ -405,7 +449,32 @@ export interface DossierIdentity {
 export interface AgentDossier {
     identity: DossierIdentity;
     intents: DossierIntent[];
+    /** Model definitions - schemas for facts (defines data structure) */
+    models?: DossierModel[];
     presentation?: DossierPresentation;
+}
+/**
+ * Facts store organized by model type.
+ *
+ * Facts are stored per model name for efficient lookup.
+ * E.g., `{ book: [...], genre: [...] }`
+ */
+export interface FactsStore {
+    /** Facts indexed by model name */
+    [model: string]: Record<string, unknown>[];
+}
+/**
+ * Cache entry for list queries.
+ */
+export interface ListCache {
+    /** Intent that was triggered */
+    intent: string;
+    /** Model this cache is for */
+    model: string;
+    /** When the cache was last updated */
+    updatedAt: number;
+    /** Whether a request is currently pending */
+    loading: boolean;
 }
 /**
  * Global Avatar UI state.
@@ -430,8 +499,18 @@ export interface AvatarState {
     focusedElement: string | null;
     /** Currently highlighted elements */
     highlightedElements: Set<string>;
-    /** Facts received from the Agent (as JSON) */
+    /**
+     * Facts store organized by model type.
+     * E.g., { book: [{title: "...", author: "..."}, ...], genre: [...] }
+     */
+    factsStore: FactsStore;
+    /**
+     * Legacy facts array (for backward compatibility)
+     * @deprecated Use factsStore instead
+     */
     facts: unknown[];
+    /** List query cache (tracks which lists have been fetched) */
+    listCache: Record<string, ListCache>;
     /** Whether connected to an Agent */
     connected: boolean;
     /** Current agent ID (if connected) */
@@ -491,6 +570,25 @@ export type Action = {
     facts: unknown[];
 } | {
     type: 'CLEAR_FACTS';
+} | {
+    type: 'SYNC_FACTS';
+    model: string;
+    facts: Record<string, unknown>[];
+} | {
+    type: 'CLEAR_MODEL_FACTS';
+    model: string;
+} | {
+    type: 'CLEAR_ALL_FACTS';
+} | {
+    type: 'SET_LIST_LOADING';
+    model: string;
+    intent: string;
+    loading: boolean;
+} | {
+    type: 'INVALIDATE_LIST_CACHE';
+    model: string;
+} | {
+    type: 'INVALIDATE_ALL_LIST_CACHE';
 } | {
     type: 'SET_CONNECTED';
     connected: boolean;
