@@ -1,27 +1,27 @@
-import type { AgentInfo, AgentDossier } from '@uhum/avatar-lib';
+import type { AgentInfo, AgentAgentCard } from '@uhum/avatar-lib';
 
 interface ChatHeaderProps {
   agentId: string;
   agentInfo: AgentInfo;
   connectionState: string;
-  /** Full dossier from Brain's WELCOME message (has identity/version) */
-  dossier: AgentDossier | null;
+  /** Full agentCard from Brain's WELCOME message (has identity/version) */
+  agentCard: AgentAgentCard | null;
 }
 
 /**
  * Compact chat header for SmartChat.
  * Shows agent branding, version, and connection status.
  */
-export function ChatHeader({ agentId, agentInfo, dossier, connectionState }: ChatHeaderProps) {
+export function ChatHeader({ agentId, agentInfo, agentCard, connectionState }: ChatHeaderProps) {
   // Prefer brand name (display name), fall back to identity name, then agent ID
-  // Use dossier from state (Brain's WELCOME) as primary source
+  // Use agentCard from state (Brain's WELCOME) as primary source
   const agentName =
-    dossier?.presentation?.brand?.name ||
-    dossier?.identity?.name ||
-    agentInfo.dossier?.presentation?.brand?.name ||
+    agentCard?.presentation?.brand?.name ||
+    agentCard?.identity?.name ||
+    agentInfo.agentCard?.presentation?.brand?.name ||
     agentId;
 
-  const version = dossier?.identity?.version;
+  const version = agentCard?.identity?.version;
 
   const getStatusLabel = () => {
     switch (connectionState) {
@@ -44,9 +44,9 @@ export function ChatHeader({ agentId, agentInfo, dossier, connectionState }: Cha
 
   return (
     <div className="avatar-chat-header">
-      {agentInfo.dossier?.presentation?.brand?.logo && (
+      {agentInfo.agentCard?.presentation?.brand?.logo && (
         <img
-          src={agentInfo.dossier.presentation.brand.logo}
+          src={agentInfo.agentCard.presentation.brand.logo}
           alt={agentName}
           className="avatar-chat-header-logo"
         />

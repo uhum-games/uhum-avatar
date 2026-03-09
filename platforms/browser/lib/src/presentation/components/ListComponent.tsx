@@ -2,7 +2,7 @@
  * ListComponent - Renders a list of items as a table.
  * 
  * The default variant renders data as a responsive table.
- * Uses model definitions (from dossier) for column headers if component 
+ * Uses model definitions (from agentCard) for column headers if component 
  * fields are not specified.
  * 
  * Features:
@@ -16,14 +16,14 @@
 
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { ComponentRenderProps } from '../registry';
-import { DossierField, DossierModelField, DossierModel, AvatarState } from '../../types';
+import { AgentCardField, AgentCardModelField, AgentCardModel, AvatarState } from '../../types';
 
 /**
  * Extended props for ListComponent that include model definition.
  */
 export interface ListComponentProps extends ComponentRenderProps {
-  /** Model definition (from dossier) - used for column headers if fields not specified */
-  model?: DossierModel;
+  /** Model definition (from agentCard) - used for column headers if fields not specified */
+  model?: AgentCardModel;
   /** Whether data is currently loading */
   loading?: boolean;
 }
@@ -247,9 +247,9 @@ export const ListComponent: React.FC<ListComponentProps> = ({
  * Component fields take priority over model fields.
  */
 function getFields(
-  componentFields?: DossierField[],
-  model?: DossierModel
-): DossierField[] {
+  componentFields?: AgentCardField[],
+  model?: AgentCardModel
+): AgentCardField[] {
   // If component has explicit fields, use them
   if (componentFields && componentFields.length > 0) {
     return componentFields;
@@ -267,7 +267,7 @@ function getFields(
 /**
  * Convert a model field to a component field.
  */
-function modelFieldToComponentField(field: DossierModelField): DossierField {
+function modelFieldToComponentField(field: AgentCardModelField): AgentCardField {
   return {
     name: field.name,
     type: field.type,

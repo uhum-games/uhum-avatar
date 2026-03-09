@@ -135,12 +135,12 @@ The Avatar learns preferences through:
 
 ## 4. Presentation Hints (Layer 2)
 
-Builder preferences are included in the **Agent Dossier** as optional presentation hints.
+Builder preferences are included in the **Agent Card** as optional presentation hints.
 
 ### Key Principles
 
 1. **Hints, not commands** — Avatar can override based on user preferences
-2. **Part of Dossier** — fetched once during discovery/connection
+2. **Part of Agent Card** — fetched once during discovery/connection
 3. **Not in messages** — never sent with individual decisions/events
 4. **Optional** — agents work fine without presentation hints
 
@@ -404,7 +404,7 @@ The Avatar combines all three layers to make rendering decisions.
 3. Check user preferences
    └── User prefers: grid layout, comfortable density
 
-4. Check builder hints (from Dossier)
+4. Check builder hints (from Agent Card)
    └── Builder suggests: grid with 3 columns
 
 5. Consider context
@@ -516,7 +516,7 @@ Avatar → Brain (semantic) → Presentation Agent (UI) → Render
 - Avatar is smart and adaptive
 - Simple to implement and reason about
 
-### Why Hints in Dossier, Not Separate?
+### Why Hints in Agent Card, Not Separate?
 
 We considered separating presentation hints into a separate document:
 
@@ -529,7 +529,7 @@ We considered separating presentation hints into a separate document:
 - Another thing to maintain
 - Agents might forget to create it
 
-**Decision:** Include in Dossier because:
+**Decision:** Include in Agent Card because:
 1. Single document to fetch and cache
 2. Presentation hints are tightly coupled to agent identity
 3. Optional section doesn't pollute semantic parts
@@ -565,7 +565,7 @@ memory([
 ]).
 ```
 
-**Dossier hint:**
+**Agent Card hint:**
 ```prolog
 layout_hint(products, grid, [columns(3)])
 ```
@@ -577,12 +577,12 @@ layout.default: "carousel"
 
 **Avatar decision:**
 - User prefers carousel → show as carousel
-- Dossier hint is overridden
+- Agent Card hint is overridden
 - Products displayed in horizontal scrollable carousel
 
 ### Example 2: First-time User
 
-**Dossier home section:**
+**Agent Card home section:**
 ```prolog
 home([
   section(welcome, [
@@ -610,7 +610,7 @@ accessibility.large_text: true
 accessibility.reduce_motion: true
 ```
 
-**Dossier hint:**
+**Agent Card hint:**
 ```prolog
 home([
   section(featured, [
@@ -808,7 +808,7 @@ function App() {
 
 ### State Flow
 
-1. **Dossier loads** → Engine loads views and components
+1. **Agent Card loads** → Engine loads views and components
 2. **State initializes** → All state variables start as `null`
 3. **User selects item** → State variable set (e.g., `selected_book`)
 4. **Engine re-evaluates** → Finds view matching new state
@@ -821,10 +821,10 @@ function App() {
 | Aspect | Responsibility |
 |--------|----------------|
 | **What data exists** | Brain (semantic facts) |
-| **What can be rendered** | Dossier (components) |
-| **How to compose UI** | Dossier (views) |
-| **What controls UI state** | Dossier (state schema) |
-| **What the agent looks like** | Dossier (brand) |
+| **What can be rendered** | Agent Card (components) |
+| **How to compose UI** | Agent Card (views) |
+| **What controls UI state** | Agent Card (state schema) |
+| **What the agent looks like** | Agent Card (brand) |
 | **How user prefers to see things** | Avatar (user preferences) |
 | **Final rendering decision** | Avatar (combining all layers) |
 

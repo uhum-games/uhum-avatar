@@ -15,7 +15,7 @@ import {
   MessageType,
   createInitialState,
   avatarReducer,
-  DossierModel,
+  AgentCardModel,
 } from './types';
 import {
   parseMessage,
@@ -28,7 +28,7 @@ import {
   extractViewInstructions,
   extractDecisionResponse,
   extractMemoryEvents,
-  extractDossierFromWelcome,
+  extractAgentCardFromWelcome,
   termToObject,
   UhumMessage,
   Term,
@@ -40,7 +40,7 @@ import {
  * A fact like `book("Title", "Author", 1999, read)` becomes:
  * `{ title: "Title", author: "Author", year: 1999, status: "read" }`
  */
-function termToFactObject(term: Term, model?: DossierModel): Record<string, unknown> {
+function termToFactObject(term: Term, model?: AgentCardModel): Record<string, unknown> {
   if (term.type !== 'compound') {
     return { value: termToObject(term) };
   }
@@ -75,7 +75,7 @@ function termToFactObject(term: Term, model?: DossierModel): Record<string, unkn
  */
 function groupByModel(
   terms: Term[],
-  models?: DossierModel[]
+  models?: AgentCardModel[]
 ): Map<string, Record<string, unknown>[]> {
   const groups = new Map<string, Record<string, unknown>[]>();
 
@@ -321,8 +321,8 @@ export class AvatarClient {
         
         // Reset step based on whether we have a dossier loaded
         // If dossier is loaded, stay at 'ready', otherwise go to 'idle'
-        const hasDossier = this.state.dossier !== null;
-        this.dispatch({ type: 'SET_CONNECTION_STEP', step: hasDossier ? 'ready' : 'idle' });
+        const hasAgentCard = this.state.dossier !== null;
+        this.dispatch({ type: 'SET_CONNECTION_STEP', step: hasAgentCard ? 'ready' : 'idle' });
 
         // Attempt reconnection if not intentional disconnect
         if (!this.isIntentionalDisconnect && this.shouldReconnect && this.reconnectOptions.enabled) {
@@ -423,8 +423,8 @@ export class AvatarClient {
 
     // Reset step based on whether we have dossier loaded
     // Keeps dossier so UI can still show agent info while disconnected
-    const hasDossier = this.state.dossier !== null;
-    this.dispatch({ type: 'SET_CONNECTION_STEP', step: hasDossier ? 'ready' : 'idle' });
+    const hasAgentCard = this.state.dossier !== null;
+    this.dispatch({ type: 'SET_CONNECTION_STEP', step: hasAgentCard ? 'ready' : 'idle' });
   }
 
   /**
@@ -614,7 +614,7 @@ export class AvatarClient {
 
     // Extract dossier from body if available
     if (message.body) {
-      const dossier = extractDossierFromWelcome(message.body);
+      const dossier = extractAgentCardFromWelcome(message.body);
       if (dossier) {
         this.log('Parsed dossier:', dossier);
         this.dispatch({ type: 'SET_DOSSIER', dossier });

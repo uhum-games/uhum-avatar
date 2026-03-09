@@ -55,16 +55,16 @@ export type ConnectionStep = 'idle' | 'locating' | 'connecting' | 'greeting' | '
 /**
  * Agent intent from dossier.
  */
-export interface DossierIntent {
+export interface AgentCardIntent {
     name: string;
     description?: string;
-    params?: DossierParam[];
+    params?: AgentCardParam[];
     effects?: string[];
 }
 /**
  * Intent parameter from dossier.
  */
-export interface DossierParam {
+export interface AgentCardParam {
     name: string;
     type: string;
     required: boolean;
@@ -73,7 +73,7 @@ export interface DossierParam {
 /**
  * Brand info from dossier presentation.
  */
-export interface DossierBrand {
+export interface AgentCardBrand {
     name?: string;
     logo?: string;
     primaryColor?: string;
@@ -86,7 +86,7 @@ export interface DossierBrand {
 /**
  * Home section from dossier presentation.
  */
-export interface DossierHomeSection {
+export interface AgentCardHomeSection {
     name: string;
     message?: string;
     dataSource?: string;
@@ -105,17 +105,17 @@ export interface DossierHomeSection {
  * - `boolean` - True/false
  * - `model` - Reference to another model (foreign key)
  */
-export type DossierFieldType = 'string' | 'number' | 'atom' | 'text' | 'datetime' | 'date' | 'boolean' | 'model';
+export type AgentCardFieldType = 'string' | 'number' | 'atom' | 'text' | 'datetime' | 'date' | 'boolean' | 'model';
 /**
  * Model field definition.
  *
  * Defines a single field in a model schema.
  */
-export interface DossierModelField {
+export interface AgentCardModelField {
     /** Field name (positional in the fact) */
     name: string;
     /** Field data type */
-    type: DossierFieldType;
+    type: AgentCardFieldType;
     /** Human-readable label */
     label: string;
     /** For model type: the referenced model name */
@@ -137,22 +137,22 @@ export interface DossierModelField {
  * ]).
  * ```
  */
-export interface DossierModel {
+export interface AgentCardModel {
     /** Model name (fact functor) */
     name: string;
     /** Field definitions (ordered, positional) */
-    fields: DossierModelField[];
+    fields: AgentCardModelField[];
 }
 /**
  * Field definition for components.
  *
  * Fields define the data structure displayed/edited by a component.
  */
-export interface DossierField {
+export interface AgentCardField {
     /** Field name (matches model property) */
     name: string;
     /** Field data type */
-    type: DossierFieldType;
+    type: AgentCardFieldType;
     /** Human-readable label */
     label: string;
     /** Whether this field is sortable in list views */
@@ -169,7 +169,7 @@ export interface DossierField {
  *
  * Actions are buttons/links that trigger intents.
  */
-export interface DossierComponentAction {
+export interface AgentCardComponentAction {
     /** Intent to trigger */
     intent: string;
     /** Button/link label */
@@ -184,7 +184,7 @@ export interface DossierComponentAction {
 /**
  * Filter definition for components.
  */
-export interface DossierComponentFilter {
+export interface AgentCardComponentFilter {
     field: string;
     type: 'select' | 'search' | 'date' | 'range';
     label?: string;
@@ -200,7 +200,7 @@ export interface DossierComponentFilter {
  * - `dashboard` - Multi-widget dashboard
  * - `chat` - Chat-focused component
  */
-export type DossierComponentType = 'list' | 'grid' | 'detail' | 'form' | 'dashboard' | 'chat';
+export type AgentCardComponentType = 'list' | 'grid' | 'detail' | 'form' | 'dashboard' | 'chat';
 /**
  * Component definition from dossier presentation.
  *
@@ -232,7 +232,7 @@ export type DossierComponentType = 'list' | 'grid' | 'detail' | 'form' | 'dashbo
  * ]).
  * ```
  */
-export interface DossierComponent {
+export interface AgentCardComponent {
     /** Unique component identifier */
     name: string;
     /** Human-readable title */
@@ -240,7 +240,7 @@ export interface DossierComponent {
     /** Component description */
     description?: string;
     /** Component type - determines rendering style */
-    type?: DossierComponentType;
+    type?: AgentCardComponentType;
     /** Data model for this component (fact type) */
     source?: string;
     /** Context variable this component depends on */
@@ -250,11 +250,11 @@ export interface DossierComponent {
     /** Intent to trigger for fetching a single entity (for detail components) */
     detailIntent?: string;
     /** Field definitions */
-    fields?: DossierField[];
+    fields?: AgentCardField[];
     /** Available actions */
-    actions?: DossierComponentAction[];
+    actions?: AgentCardComponentAction[];
     /** Filter definitions */
-    filters?: DossierComponentFilter[];
+    filters?: AgentCardComponentFilter[];
     /** Default sort configuration */
     defaultSort?: {
         field: string;
@@ -287,7 +287,7 @@ export interface DossierComponent {
  * ]).
  * ```
  */
-export interface DossierStateVariable {
+export interface AgentCardStateVariable {
     /** Variable name (e.g., "selected_book") */
     name: string;
     /** Variable type (usually "model" for references) */
@@ -305,9 +305,9 @@ export interface DossierStateVariable {
  *
  * **Note:** This is Avatar-only state, not Brain state.
  */
-export interface DossierState {
+export interface AgentCardState {
     /** Available state variables */
-    variables: DossierStateVariable[];
+    variables: AgentCardStateVariable[];
 }
 /**
  * View definition from dossier presentation.
@@ -338,7 +338,7 @@ export interface DossierState {
  * ]).
  * ```
  */
-export interface DossierView {
+export interface AgentCardView {
     /** Unique view identifier */
     name: string;
     /** Human-readable title */
@@ -358,9 +358,9 @@ export interface DossierView {
 }
 /**
  * Legacy column definition for views.
- * @deprecated Use DossierField in components instead
+ * @deprecated Use AgentCardField in components instead
  */
-export interface DossierViewColumn {
+export interface AgentCardViewColumn {
     name: string;
     type: string;
     label: string;
@@ -370,9 +370,9 @@ export interface DossierViewColumn {
 }
 /**
  * Legacy action definition for views.
- * @deprecated Use DossierComponentAction in components instead
+ * @deprecated Use AgentCardComponentAction in components instead
  */
-export interface DossierViewAction {
+export interface AgentCardViewAction {
     intent: string;
     label: string;
     icon?: string;
@@ -381,9 +381,9 @@ export interface DossierViewAction {
 }
 /**
  * Legacy filter definition for views.
- * @deprecated Use DossierComponentFilter in components instead
+ * @deprecated Use AgentCardComponentFilter in components instead
  */
-export interface DossierViewFilter {
+export interface AgentCardViewFilter {
     field: string;
     type: 'select' | 'search' | 'date' | 'range';
     label?: string;
@@ -393,11 +393,11 @@ export interface DossierViewFilter {
  * Legacy view types.
  * @deprecated Component types are now defined on components, not views
  */
-export type DossierViewType = 'list' | 'grid' | 'detail' | 'form' | 'dashboard' | 'chat' | 'custom';
+export type AgentCardViewType = 'list' | 'grid' | 'detail' | 'form' | 'dashboard' | 'chat' | 'custom';
 /**
  * Layout hint from dossier presentation.
  */
-export interface DossierLayoutHint {
+export interface AgentCardLayoutHint {
     dataType: string;
     layout: string;
     options?: Record<string, unknown>;
@@ -435,24 +435,24 @@ export interface DossierLayoutHint {
  *
  * **Note:** State is Avatar-only UI state, not Brain state.
  */
-export interface DossierPresentation {
+export interface AgentCardPresentation {
     /** Brand identity (colors, logo, greetings) */
-    brand?: DossierBrand;
+    brand?: AgentCardBrand;
     /** UI state schema - controls which views/components are shown (Avatar-only, not Brain state) */
-    state?: DossierState;
+    state?: AgentCardState;
     /** UI components - reusable building blocks */
-    components?: DossierComponent[];
+    components?: AgentCardComponent[];
     /** Views - composition of components (which components to show together) */
-    views?: DossierView[];
+    views?: AgentCardView[];
     /** Home/landing sections */
-    home?: DossierHomeSection[];
+    home?: AgentCardHomeSection[];
     /** Layout hints for rendering */
-    layouts?: DossierLayoutHint[];
+    layouts?: AgentCardLayoutHint[];
 }
 /**
  * Agent identity from dossier.
  */
-export interface DossierIdentity {
+export interface AgentCardIdentity {
     id: string;
     name: string;
     version: string;
@@ -464,12 +464,12 @@ export interface DossierIdentity {
  *
  * Received from the Brain in the WELCOME message.
  */
-export interface AgentDossier {
-    identity: DossierIdentity;
-    intents: DossierIntent[];
+export interface AgentAgentCard {
+    identity: AgentCardIdentity;
+    intents: AgentCardIntent[];
     /** Model definitions - schemas for facts (defines data structure) */
-    models?: DossierModel[];
-    presentation?: DossierPresentation;
+    models?: AgentCardModel[];
+    presentation?: AgentCardPresentation;
 }
 /**
  * Entity store organized by model type.
@@ -569,7 +569,7 @@ export interface AvatarState {
     /** Current connection step (for progress UI) */
     connectionStep: ConnectionStep;
     /** Agent dossier with capabilities and presentation hints */
-    dossier: AgentDossier | null;
+    dossier: AgentAgentCard | null;
 }
 /**
  * Actions that can change the Avatar state.
@@ -682,7 +682,7 @@ export type Action = {
     step: ConnectionStep;
 } | {
     type: 'SET_DOSSIER';
-    dossier: AgentDossier;
+    dossier: AgentAgentCard;
 } | {
     type: 'CLEAR_DOSSIER';
 };

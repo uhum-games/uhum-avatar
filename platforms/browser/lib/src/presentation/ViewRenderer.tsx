@@ -10,15 +10,15 @@
  * It reactively re-renders when:
  * - Presentation state changes (e.g., user selects an item)
  * - Facts change (e.g., new data from Brain)
- * - Dossier changes (e.g., reconnected to a different agent)
+ * - AgentCard changes (e.g., reconnected to a different agent)
  */
 
 import React, { useMemo, useCallback, useEffect, useState } from 'react';
 import {
-  DossierPresentation,
-  DossierComponent,
-  DossierView,
-  DossierModel,
+  AgentCardPresentation,
+  AgentCardComponent,
+  AgentCardView,
+  AgentCardModel,
 } from '../types';
 import {
   PresentationState,
@@ -70,10 +70,10 @@ export type FactsStore = EntityStore;
  * Props for the ViewRenderer component.
  */
 export interface ViewRendererProps {
-  /** Presentation hints from dossier */
-  presentation?: DossierPresentation;
-  /** Model definitions from dossier (at dossier root, not in presentation) */
-  models?: DossierModel[];
+  /** Presentation hints from agentCard */
+  presentation?: AgentCardPresentation;
+  /** Model definitions from agentCard (at agentCard root, not in presentation) */
+  models?: AgentCardModel[];
   /** Data from the Brain (legacy array) */
   facts: unknown[];
   /** Entities organized by model (model instances for display) */
@@ -101,7 +101,7 @@ export interface ViewRendererProps {
  * ViewRenderer - Renders the appropriate view based on presentation state.
  * 
  * This is the main entry point for the presentation layer. It:
- * 1. Manages presentation state (UI state from dossier schema)
+ * 1. Manages presentation state (UI state from agentCard schema)
  * 2. Uses the presentation engine to select the current view
  * 3. Renders the view's components using the component registry
  * 
@@ -112,7 +112,7 @@ export interface ViewRendererProps {
  *   
  *   return (
  *     <ViewRenderer
- *       presentation={state.dossier?.presentation}
+ *       presentation={state.agentCard?.presentation}
  *       facts={state.facts}
  *       onIntent={(intent, params) => avatar.sendIntention(intent, params)}
  *     />
@@ -184,7 +184,7 @@ export function ViewRenderer({
 
   // Handle item selection (sets context variable)
   const handleSelect = useCallback(
-    (component: DossierComponent, item: unknown) => {
+    (component: AgentCardComponent, item: unknown) => {
       if (component.context) {
         // Set the context variable for this component's source
         stateManager.setValue(component.context, item as Record<string, unknown>);
@@ -200,7 +200,7 @@ export function ViewRenderer({
       for (const view of views) {
         if (view.context && !stateManager.isSet(view.context)) {
           const schema = presentation?.state?.variables ?? [];
-          const stateVar = schema.find(v => v.name === view.context);
+          const stateVar = schema.find((v: any) => v.name === view.context);
           if (stateVar?.source === component.source) {
             stateManager.setValue(view.context, item as Record<string, unknown>);
             break;
@@ -223,7 +223,7 @@ export function ViewRenderer({
   );
 
   // Get model definition for a component
-  const getModel = useCallback((component: DossierComponent) => {
+  const getModel = useCallback((component: AgentCardComponent) => {
     const modelName = component.source;
     if (!modelName || !models) return undefined;
     return models.find(m => m.name === modelName);
@@ -246,7 +246,7 @@ export function ViewRenderer({
       <div className={`uhum-view-layout uhum-view-layout--${layout}`}>
         {components.map((component) => {
           const Renderer = getComponentRenderer(component.type ?? 'list');
-          
+
           if (!Renderer) {
             if (debug) {
               console.warn('[ViewRenderer] No renderer for component type:', component.type);
@@ -266,9 +266,9 @@ export function ViewRenderer({
             // Fall back to legacy facts filtering
             componentData = filterFactsBySource(facts, component);
           }
-          
+
           const contextItem = getContextItem(facts, component, presentationState);
-          
+
           // Get model definition for schema-based rendering
           const model = getModel(component);
 

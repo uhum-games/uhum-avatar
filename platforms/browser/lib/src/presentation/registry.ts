@@ -30,7 +30,7 @@
  */
 
 import React from 'react';
-import { DossierComponent, DossierComponentType, DossierModel } from '../types';
+import { AgentCardComponent, AgentCardComponentType, AgentCardModel } from '../types';
 import { PresentationState } from './state';
 import type { AvatarClient } from '../avatar';
 
@@ -39,7 +39,7 @@ import type { AvatarClient } from '../avatar';
  */
 export interface ComponentRenderProps {
   /** The component definition from dossier */
-  component: DossierComponent;
+  component: AgentCardComponent;
   /** The data to display (filtered facts for this component) */
   data: unknown[];
   /** Single item data (for detail/form components) */
@@ -47,7 +47,7 @@ export interface ComponentRenderProps {
   /** Current presentation state */
   state: PresentationState;
   /** Model definition (from dossier) - used for schema-based rendering */
-  model?: DossierModel;
+  model?: AgentCardModel;
   /** Whether data is currently loading */
   loading?: boolean;
   /** Callback when user selects an item */
@@ -72,7 +72,7 @@ export type ComponentRenderer = React.FC<ComponentRenderProps>;
 /**
  * Registry of component type to React component mappings.
  */
-const componentRegistry: Map<DossierComponentType, ComponentRenderer> = new Map();
+const componentRegistry: Map<AgentCardComponentType, ComponentRenderer> = new Map();
 
 /**
  * Register a React component for a component type.
@@ -84,7 +84,7 @@ const componentRegistry: Map<DossierComponentType, ComponentRenderer> = new Map(
  * ```
  */
 export function registerComponent(
-  type: DossierComponentType,
+  type: AgentCardComponentType,
   renderer: ComponentRenderer
 ): void {
   componentRegistry.set(type, renderer);
@@ -94,7 +94,7 @@ export function registerComponent(
  * Get the React component for a component type.
  */
 export function getComponentRenderer(
-  type: DossierComponentType
+  type: AgentCardComponentType
 ): ComponentRenderer | undefined {
   return componentRegistry.get(type);
 }
@@ -102,14 +102,14 @@ export function getComponentRenderer(
 /**
  * Check if a component type is registered.
  */
-export function hasComponentRenderer(type: DossierComponentType): boolean {
+export function hasComponentRenderer(type: AgentCardComponentType): boolean {
   return componentRegistry.has(type);
 }
 
 /**
  * Get all registered component types.
  */
-export function getRegisteredTypes(): DossierComponentType[] {
+export function getRegisteredTypes(): AgentCardComponentType[] {
   return Array.from(componentRegistry.keys());
 }
 

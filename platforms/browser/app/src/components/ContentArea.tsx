@@ -9,7 +9,7 @@ interface ContentAreaProps {
  * Main content area that renders based on state.
  * 
  * Uses the ViewRenderer to display views and components based on:
- * - The dossier's presentation definition (views, components, state schema)
+ * - The agentCard's presentation definition (views, components, state schema)
  * - Current facts from the Brain
  * - User interactions (item selection, etc.)
  */
@@ -36,14 +36,14 @@ export function ContentArea({ state }: ContentAreaProps) {
   }
 
   // Check if we have presentation data
-  const viewsCount = state.dossier?.presentation?.views?.length ?? 0;
+  const viewsCount = state.agentCard?.presentation?.views?.length ?? 0;
   const hasPresentation = viewsCount > 0;
   
   console.log('[ContentArea] Rendering:', {
     hasPresentation,
     viewsCount,
-    views: state.dossier?.presentation?.views,
-    components: state.dossier?.presentation?.components,
+    views: state.agentCard?.presentation?.views,
+    components: state.agentCard?.presentation?.components,
     factsCount: state.facts.length,
     factsStoreKeys: Object.keys(state.factsStore),
   });
@@ -53,8 +53,8 @@ export function ContentArea({ state }: ContentAreaProps) {
     return (
       <div className="avatar-content">
         <ViewRenderer
-          presentation={state.dossier?.presentation}
-          models={state.dossier?.models}
+          presentation={state.agentCard?.presentation}
+          models={state.agentCard?.models}
           facts={state.facts}
           factsStore={state.factsStore}
           onIntent={handleIntent}
@@ -76,7 +76,7 @@ export function ContentArea({ state }: ContentAreaProps) {
   }
 
   // Empty state - show agent branding or neutral background
-  const brand = state.dossier?.presentation?.brand;
+  const brand = state.agentCard?.presentation?.brand;
   
   return (
     <div className="avatar-empty">

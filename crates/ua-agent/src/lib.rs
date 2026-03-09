@@ -3,7 +3,7 @@
 //! This crate handles all communication with Agents (server-side Brains):
 //!
 //! - **Session** — Connection lifecycle, message handling, cursor tracking
-//! - **Dossier** — Agent self-description parsing (intents, endpoints, hints)
+//! - **AgentCard** — Agent self-description parsing (intents, endpoints, hints)
 //! - **Queue** — Offline intention queueing with retry logic
 //! - **Cache** — Local memory cache with deduplication
 //!
@@ -22,16 +22,16 @@
 //! From the Avatar's perspective:
 //! - **Agent** — The entity it connects to (e.g., `uhum://acme.billing`)
 //! - **Brain** — Server-side implementation detail (Avatar doesn't care)
-//! - **Dossier** — Agent's self-description (intents, capabilities, hints)
+//! - **AgentCard** — Agent's self-description (intents, capabilities, hints)
 
 pub mod cache;
-pub mod dossier;
+pub mod agent_card;
 pub mod queue;
 pub mod session;
 
 // Re-exports
 pub use cache::{CachedEvent, DerivedView, MemoryCache};
-pub use dossier::{
+pub use agent_card::{
     AgentDossier, Brand, DataSource, Endpoint, HomeSection, Intent, LayoutHint, Param, ParamType,
     PresentationHints,
 };

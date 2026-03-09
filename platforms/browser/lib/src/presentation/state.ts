@@ -11,7 +11,7 @@
  * - Presentation state (selected items, filters) → managed locally by Avatar
  */
 
-import { DossierStateVariable } from '../types';
+import { AgentCardStateVariable } from '../types';
 
 /**
  * Value types for presentation state variables.
@@ -43,7 +43,7 @@ export type PresentationAction =
   | { type: 'SET_VALUE'; variable: string; value: PresentationValue }
   | { type: 'CLEAR_VALUE'; variable: string }
   | { type: 'CLEAR_ALL' }
-  | { type: 'INITIALIZE'; schema: DossierStateVariable[] };
+  | { type: 'INITIALIZE'; schema: AgentCardStateVariable[] };
 
 /**
  * Reducer for presentation state.
@@ -109,14 +109,14 @@ export function presentationReducer(
  */
 export class PresentationStateManager {
   private state: PresentationState = {};
-  private schema: DossierStateVariable[] = [];
+  private schema: AgentCardStateVariable[] = [];
   private subscribers: Set<PresentationStateSubscriber> = new Set();
 
   /**
    * Initialize the state from a dossier state schema.
    * All variables start as null.
    */
-  initialize(schema: DossierStateVariable[]): void {
+  initialize(schema: AgentCardStateVariable[]): void {
     this.schema = schema;
     this.dispatch({ type: 'INITIALIZE', schema });
   }
@@ -131,7 +131,7 @@ export class PresentationStateManager {
   /**
    * Get the state schema.
    */
-  getSchema(): DossierStateVariable[] {
+  getSchema(): AgentCardStateVariable[] {
     return this.schema;
   }
 

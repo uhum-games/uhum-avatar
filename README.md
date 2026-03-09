@@ -10,7 +10,7 @@ The Avatar has two fundamental aspects:
 
 A universal client for the Uhum network:
 
-- **Reads Agent Dossiers** — understands what any agent can do
+- **Reads Agent Cards** — understands what any agent can do
 - **Queries the Network** — discovers agents via `uhum://uhum.discovery`
 - **Multi-Agent Connections** — can connect to multiple agents simultaneously
 - **Protocol Compliance** — speaks Uhum protocol fluently

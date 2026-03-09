@@ -28,7 +28,7 @@
  */
 
 import { useEffect, useCallback, useMemo, useState } from 'react';
-import { DossierComponent, DossierModel, AvatarState, EntityCache } from '../types';
+import { AgentCardComponent, AgentCardModel, AvatarState, EntityCache } from '../types';
 import { AvatarClient } from '../avatar';
 
 /**
@@ -36,7 +36,7 @@ import { AvatarClient } from '../avatar';
  */
 export interface UseEntityOptions {
   /** The component definition (includes source, detailIntent, fields) */
-  component: DossierComponent;
+  component: AgentCardComponent;
   /** The AvatarClient instance */
   client: AvatarClient;
   /** The entity identifier to fetch (can be id, title, or other unique field) */
@@ -60,7 +60,7 @@ export interface UseEntityResult<T = Record<string, unknown>> {
   /** Whether data has been fetched at least once */
   fetched: boolean;
   /** The model definition (from dossier) */
-  model: DossierModel | undefined;
+  model: AgentCardModel | undefined;
   /** Cache info */
   cache: EntityCache | undefined;
   /** Trigger a fetch (even if cached) */

@@ -15,13 +15,13 @@ export interface AgentInfo {
   /** WebSocket URL to connect to the Brain */
   wsUrl: string;
   /** Optional agent dossier with presentation hints */
-  dossier?: AgentDossier;
+  dossier?: AgentCard;
 }
 
 /**
  * Agent dossier containing metadata and presentation hints.
  */
-export interface AgentDossier {
+export interface AgentCard {
   /** Display name */
   name?: string;
   /** Agent description */
@@ -279,9 +279,9 @@ export class DirectoryClient {
  * Create a mock directory client for development.
  *
  * @param mockWsUrl - WebSocket URL to return for all agent IDs
- * @param mockDossier - Optional dossier to return
+ * @param mockAgentCard - Optional dossier to return
  */
-export function createMockDirectory(mockWsUrl: string, mockDossier?: AgentDossier): DirectoryClient {
+export function createMockDirectory(mockWsUrl: string, mockAgentCard?: AgentCard): DirectoryClient {
   const client = new DirectoryClient();
 
   // Override resolve to return mock data
@@ -289,7 +289,7 @@ export function createMockDirectory(mockWsUrl: string, mockDossier?: AgentDossie
     console.log(`[MockDirectory] Resolving ${agentId} → ${mockWsUrl}`);
     return {
       wsUrl: mockWsUrl,
-      dossier: mockDossier,
+      dossier: mockAgentCard,
     };
   };
 

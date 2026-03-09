@@ -9,7 +9,7 @@
 
 use std::collections::HashSet;
 
-use crate::dossier::AgentDossier;
+use crate::agent_card::AgentDossier;
 use ua_core::{AvatarError, Clock, Random, Result, Storage, Transport};
 use ub_core::{Cursor, Timestamp};
 use ub_protocol::{Frame, Headers, Term};
@@ -90,8 +90,8 @@ where
     clock: C,
     /// Random for ID generation.
     random: R,
-    /// Agent dossier (received in WELCOME).
-    dossier: Option<AgentDossier>,
+    /// Agent agent_card (received in WELCOME).
+    agent_card: Option<AgentDossier>,
     /// Current cursor position.
     cursor: Cursor,
     /// Resume token for reconnection.
@@ -126,7 +126,7 @@ where
             storage,
             clock,
             random,
-            dossier: None,
+            agent_card: None,
             cursor: Cursor::default(),
             resume_token: None,
             seen_cursors: HashSet::new(),
@@ -141,9 +141,9 @@ where
         self.state
     }
 
-    /// Get the agent dossier (available after WELCOME).
-    pub fn dossier(&self) -> Option<&AgentDossier> {
-        self.dossier.as_ref()
+    /// Get the agent agent_card (available after WELCOME).
+    pub fn agent_card(&self) -> Option<&AgentDossier> {
+        self.agent_card.as_ref()
     }
 
     /// Get the current cursor position.
@@ -284,11 +284,11 @@ where
     }
 
     fn handle_welcome(&mut self, frame: &Frame) -> Result<()> {
-        // Parse agent dossier from WELCOME body
+        // Parse agent agent_card from WELCOME body
         if let Some(body) = &frame.body {
             // Try to parse body as Term
             if let Ok(term) = ub_protocol::parse_term(body) {
-                self.dossier = Some(AgentDossier::from_term(&term)?);
+                self.agent_card = Some(AgentDossier::from_term(&term)?);
             }
         }
 

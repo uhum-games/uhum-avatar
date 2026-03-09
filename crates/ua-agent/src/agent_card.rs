@@ -1,6 +1,6 @@
-//! Agent Dossier parsing and representation.
+//! Agent AgentCard parsing and representation.
 //!
-//! The Agent Dossier is the agent's self-description, containing:
+//! The Agent AgentCard is the agent's self-description, containing:
 //! - Identity (id, name, version)
 //! - Intents (what the agent can do - semantic)
 //! - Endpoints (how to connect)
@@ -10,7 +10,7 @@
 //!
 //! Rendering decisions come from three layers (priority order):
 //! 1. User Preferences (Avatar-local, highest priority)
-//! 2. Presentation Hints (from Dossier, optional)
+//! 2. Presentation Hints (from AgentCard, optional)
 //! 3. Avatar Defaults (lowest priority)
 //!
 //! Presentation hints are **hints, not commands**. The Avatar can override
@@ -19,7 +19,7 @@
 use ua_core::Result;
 use ub_protocol::Term;
 
-/// An Agent Dossier - the agent's self-description.
+/// An Agent AgentCard - the agent's self-description.
 #[derive(Debug, Clone)]
 pub struct AgentDossier {
     /// Agent ID (e.g., "acme.billing").
@@ -40,7 +40,7 @@ pub struct AgentDossier {
 }
 
 impl AgentDossier {
-    /// Parse an Agent Dossier from a Term.
+    /// Parse an Agent AgentCard from a Term.
     ///
     /// Expected format:
     /// ```prolog
@@ -53,7 +53,7 @@ impl AgentDossier {
     /// )
     /// ```
     pub fn from_term(term: &Term) -> Result<Self> {
-        // For now, create a minimal dossier
+        // For now, create a minimal agent_card
         // TODO: Implement full Term parsing
         let id = extract_id(term).unwrap_or_else(|| "unknown".to_string());
 
@@ -73,7 +73,7 @@ impl AgentDossier {
         self.intents.iter().find(|i| i.name == name)
     }
 
-    /// Check if this dossier has presentation hints.
+    /// Check if this agent_card has presentation hints.
     pub fn has_presentation_hints(&self) -> bool {
         self.presentation.is_some()
     }
@@ -444,9 +444,9 @@ mod tests {
     #[test]
     fn test_empty_dossier() {
         let term = Term::Atom("unknown".to_string());
-        let dossier = AgentDossier::from_term(&term).unwrap();
-        assert_eq!(dossier.id, "unknown");
-        assert!(!dossier.has_presentation_hints());
+        let agent_card = AgentDossier::from_term(&term).unwrap();
+        assert_eq!(agent_card.id, "unknown");
+        assert!(!agent_card.has_presentation_hints());
     }
 
     #[test]
@@ -458,8 +458,8 @@ mod tests {
                 args: vec![Term::Atom("acme.billing".to_string())],
             }],
         };
-        let dossier = AgentDossier::from_term(&term).unwrap();
-        assert_eq!(dossier.id, "acme.billing");
+        let agent_card = AgentDossier::from_term(&term).unwrap();
+        assert_eq!(agent_card.id, "acme.billing");
     }
 
     #[test]
@@ -471,8 +471,8 @@ mod tests {
                 args: vec![Term::Atom("test.agent".to_string())],
             }],
         };
-        let dossier = AgentDossier::from_term(&term).unwrap();
-        assert!(dossier.presentation.is_none());
-        assert!(!dossier.has_presentation_hints());
+        let agent_card = AgentDossier::from_term(&term).unwrap();
+        assert!(agent_card.presentation.is_none());
+        assert!(!agent_card.has_presentation_hints());
     }
 }

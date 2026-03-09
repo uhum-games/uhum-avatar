@@ -14,12 +14,12 @@ export interface AgentInfo {
     /** WebSocket URL to connect to the Brain */
     wsUrl: string;
     /** Optional agent dossier with presentation hints */
-    dossier?: AgentDossier;
+    dossier?: AgentAgentCard;
 }
 /**
  * Agent dossier containing metadata and presentation hints.
  */
-export interface AgentDossier {
+export interface AgentAgentCard {
     /** Display name */
     name?: string;
     /** Agent description */
@@ -120,7 +120,7 @@ export declare class DirectoryClient {
  * Create a mock directory client for development.
  *
  * @param mockWsUrl - WebSocket URL to return for all agent IDs
- * @param mockDossier - Optional dossier to return
+ * @param mockAgentCard - Optional dossier to return
  */
-export declare function createMockDirectory(mockWsUrl: string, mockDossier?: AgentDossier): DirectoryClient;
+export declare function createMockDirectory(mockWsUrl: string, mockAgentCard?: AgentAgentCard): DirectoryClient;
 //# sourceMappingURL=directory.d.ts.map

@@ -12,7 +12,7 @@
 //! ```text
 //! ua-core   ← Shared types, platform traits
 //!    ↑
-//! ua-agent  ← Agent communication (session, dossier)
+//! ua-agent  ← Agent communication (session, agent_card)
 //!    ↑
 //! ua-view   ← This crate (view layer)
 //! ```

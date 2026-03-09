@@ -99,7 +99,7 @@ Response (404):
 |-------|-------------|
 | `agentId` | Unique agent identifier (lookup key) |
 | `wsUrl` | Brain WebSocket URL |
-| `dossier` | Optional agent dossier (name, intents, presentation hints) |
+| `dossier` | Optional agent card (name, intents, presentation hints) |
 
 ### How Directory Gets Updated
 

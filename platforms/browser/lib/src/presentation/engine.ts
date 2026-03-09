@@ -25,7 +25,7 @@
  * - Transition animations: smooth switching between views
  */
 
-import { DossierView, DossierComponent, DossierPresentation } from '../types';
+import { AgentCardView, AgentCardComponent, AgentCardPresentation } from '../types';
 import { PresentationState, PresentationStateManager } from './state';
 
 /**
@@ -33,9 +33,9 @@ import { PresentationState, PresentationStateManager } from './state';
  */
 export interface ViewSelectionResult {
   /** The selected view (null if no views defined) */
-  view: DossierView | null;
+  view: AgentCardView | null;
   /** Components to render for this view */
-  components: DossierComponent[];
+  components: AgentCardComponent[];
   /** Layout hint for component arrangement */
   layout: 'single' | 'split' | 'tabs' | 'stack';
   /** Reason for selection (for debugging) */
@@ -70,9 +70,9 @@ export interface PresentationEngineConfig {
  * ```
  */
 export class PresentationEngine {
-  private views: DossierView[] = [];
-  private components: Map<string, DossierComponent> = new Map();
-  private defaultView: DossierView | null = null;
+  private views: AgentCardView[] = [];
+  private components: Map<string, AgentCardComponent> = new Map();
+  private defaultView: AgentCardView | null = null;
   private config: PresentationEngineConfig;
 
   constructor(config: PresentationEngineConfig = {}) {
@@ -82,7 +82,7 @@ export class PresentationEngine {
   /**
    * Load presentation definitions from dossier.
    */
-  loadPresentation(presentation?: DossierPresentation): void {
+  loadPresentation(presentation?: AgentCardPresentation): void {
     // Clear existing data
     this.views = [];
     this.components.clear();
@@ -121,21 +121,21 @@ export class PresentationEngine {
   /**
    * Get all loaded views.
    */
-  getViews(): DossierView[] {
+  getViews(): AgentCardView[] {
     return this.views;
   }
 
   /**
    * Get all loaded components.
    */
-  getComponents(): DossierComponent[] {
+  getComponents(): AgentCardComponent[] {
     return Array.from(this.components.values());
   }
 
   /**
    * Get a component by name.
    */
-  getComponent(name: string): DossierComponent | undefined {
+  getComponent(name: string): AgentCardComponent | undefined {
     return this.components.get(name);
   }
 
@@ -162,7 +162,7 @@ export class PresentationEngine {
     this.log('Matching views:', matchingViews.map(v => v.name));
 
     // Select the best match
-    let selectedView: DossierView | null = null;
+    let selectedView: AgentCardView | null = null;
     let reason = '';
 
     if (matchingViews.length > 0) {
@@ -197,14 +197,14 @@ export class PresentationEngine {
    * (e.g., detail components whose context isn't set).
    */
   private resolveComponents(
-    view: DossierView | null,
+    view: AgentCardView | null,
     state: PresentationState
-  ): DossierComponent[] {
+  ): AgentCardComponent[] {
     if (!view || !view.components) {
       return [];
     }
 
-    const resolved: DossierComponent[] = [];
+    const resolved: AgentCardComponent[] = [];
 
     for (const componentName of view.components) {
       const component = this.components.get(componentName);
@@ -248,7 +248,7 @@ export class PresentationEngine {
     stateManager: PresentationStateManager,
     onViewChange: (result: ViewSelectionResult) => void
   ): () => void {
-    let lastView: DossierView | null = null;
+    let lastView: AgentCardView | null = null;
 
     const unsubscribe = stateManager.subscribe((state) => {
       const result = this.selectView(state);
@@ -296,7 +296,7 @@ export function createPresentationEngine(
  */
 export function filterFactsBySource(
   facts: unknown[],
-  component: DossierComponent
+  component: AgentCardComponent
 ): unknown[] {
   if (!component.source) {
     return facts;
@@ -335,7 +335,7 @@ export function filterFactsBySource(
  */
 export function getContextItem(
   facts: unknown[],
-  component: DossierComponent,
+  component: AgentCardComponent,
   state: PresentationState
 ): unknown | null {
   if (!component.context) {

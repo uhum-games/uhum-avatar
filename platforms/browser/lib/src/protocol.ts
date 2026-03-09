@@ -744,36 +744,36 @@ export function termToObject(term: Term): unknown {
 }
 
 // ============================================================================
-// Dossier Extraction
+// AgentCard Extraction
 // ============================================================================
 
 import type {
-  AgentDossier,
-  DossierIdentity,
-  DossierIntent,
-  DossierParam,
-  DossierPresentation,
-  DossierBrand,
-  DossierHomeSection,
-  DossierView,
-  DossierViewColumn,
-  DossierViewAction,
-  DossierViewFilter,
-  DossierViewType,
-  DossierLayoutHint,
+  AgentAgentCard,
+  AgentCardIdentity,
+  AgentCardIntent,
+  AgentCardParam,
+  AgentCardPresentation,
+  AgentCardBrand,
+  AgentCardHomeSection,
+  AgentCardView,
+  AgentCardViewColumn,
+  AgentCardViewAction,
+  AgentCardViewFilter,
+  AgentCardViewType,
+  AgentCardLayoutHint,
   // Model types
-  DossierModel,
-  DossierModelField,
+  AgentCardModel,
+  AgentCardModelField,
   // Component types
-  DossierComponent,
-  DossierComponentType,
-  DossierComponentAction,
-  DossierComponentFilter,
-  DossierField,
-  DossierFieldType,
+  AgentCardComponent,
+  AgentCardComponentType,
+  AgentCardComponentAction,
+  AgentCardComponentFilter,
+  AgentCardField,
+  AgentCardFieldType,
   // State types
-  DossierState,
-  DossierStateVariable,
+  AgentCardState,
+  AgentCardStateVariable,
 } from './types';
 
 /**
@@ -791,7 +791,7 @@ import type {
  *   ])
  * ])
  */
-export function extractDossierFromWelcome(body: Term): AgentDossier | null {
+export function extractAgentCardFromWelcome(body: Term): AgentAgentCard | null {
   if (body.type !== 'compound' || body.functor !== 'welcome') {
     return null;
   }
@@ -839,10 +839,10 @@ export function extractDossierFromWelcome(body: Term): AgentDossier | null {
     return null;
   }
 
-  let identity: DossierIdentity = { id: agentId, name: agentId, version: agentVersion };
-  let intents: DossierIntent[] = [];
-  let models: DossierModel[] | undefined;
-  let presentation: DossierPresentation | undefined;
+  let identity: AgentCardIdentity = { id: agentId, name: agentId, version: agentVersion };
+  let intents: AgentCardIntent[] = [];
+  let models: AgentCardModel[] | undefined;
+  let presentation: AgentCardPresentation | undefined;
 
   for (const item of dossierList.items) {
     if (item.type !== 'compound') continue;
@@ -869,8 +869,8 @@ export function extractDossierFromWelcome(body: Term): AgentDossier | null {
 /**
  * Parse identity section.
  */
-function parseIdentity(term: Term | undefined, defaultId: string, defaultVersion: string): DossierIdentity {
-  const identity: DossierIdentity = {
+function parseIdentity(term: Term | undefined, defaultId: string, defaultVersion: string): AgentCardIdentity {
+  const identity: AgentCardIdentity = {
     id: defaultId,
     name: defaultId,
     version: defaultVersion,
@@ -909,10 +909,10 @@ function parseIdentity(term: Term | undefined, defaultId: string, defaultVersion
 /**
  * Parse intents section.
  */
-function parseIntents(term: Term | undefined): DossierIntent[] {
+function parseIntents(term: Term | undefined): AgentCardIntent[] {
   if (!term || term.type !== 'list') return [];
 
-  const intents: DossierIntent[] = [];
+  const intents: AgentCardIntent[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'intent') continue;
@@ -927,13 +927,13 @@ function parseIntents(term: Term | undefined): DossierIntent[] {
 /**
  * Parse a single intent.
  */
-function parseIntent(term: Term): DossierIntent | null {
+function parseIntent(term: Term): AgentCardIntent | null {
   if (term.type !== 'compound' || term.functor !== 'intent') return null;
 
   const name = extractString(term.args[0]);
   if (!name) return null;
 
-  const intent: DossierIntent = { name };
+  const intent: AgentCardIntent = { name };
 
   const propsList = term.args[1];
   if (propsList?.type !== 'list') return intent;
@@ -962,10 +962,10 @@ function parseIntent(term: Term): DossierIntent | null {
 /**
  * Parse intent parameters.
  */
-function parseParams(term: Term | undefined): DossierParam[] {
+function parseParams(term: Term | undefined): AgentCardParam[] {
   if (!term || term.type !== 'list') return [];
 
-  const params: DossierParam[] = [];
+  const params: AgentCardParam[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'param') continue;
@@ -997,10 +997,10 @@ function parseParams(term: Term | undefined): DossierParam[] {
  * 
  * Note: models are at dossier root, not in presentation.
  */
-function parsePresentation(term: Term | undefined): DossierPresentation | undefined {
+function parsePresentation(term: Term | undefined): AgentCardPresentation | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const presentation: DossierPresentation = {};
+  const presentation: AgentCardPresentation = {};
 
   for (const item of term.items) {
     if (item.type !== 'compound') continue;
@@ -1033,10 +1033,10 @@ function parsePresentation(term: Term | undefined): DossierPresentation | undefi
 /**
  * Parse brand info.
  */
-function parseBrand(term: Term | undefined): DossierBrand | undefined {
+function parseBrand(term: Term | undefined): AgentCardBrand | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const brand: DossierBrand = {};
+  const brand: AgentCardBrand = {};
 
   for (const item of term.items) {
     if (item.type !== 'compound') continue;
@@ -1100,10 +1100,10 @@ function parseBrand(term: Term | undefined): DossierBrand | undefined {
  * ])
  * ```
  */
-function parseModels(term: Term | undefined): DossierModel[] | undefined {
+function parseModels(term: Term | undefined): AgentCardModel[] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const models: DossierModel[] = [];
+  const models: AgentCardModel[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'model') continue;
@@ -1120,7 +1120,7 @@ function parseModels(term: Term | undefined): DossierModel[] | undefined {
  * 
  * Format: model(name, [field(...), field(...), ...])
  */
-function parseModel(term: Term): DossierModel | null {
+function parseModel(term: Term): AgentCardModel | null {
   if (term.type !== 'compound' || term.functor !== 'model') return null;
   if (term.args.length < 2) return null;
 
@@ -1130,7 +1130,7 @@ function parseModel(term: Term): DossierModel | null {
   const fieldsList = term.args[1];
   if (fieldsList?.type !== 'list') return null;
 
-  const fields: DossierModelField[] = [];
+  const fields: AgentCardModelField[] = [];
   for (const fieldTerm of fieldsList.items) {
     if (fieldTerm.type !== 'compound' || fieldTerm.functor !== 'field') continue;
     
@@ -1146,17 +1146,17 @@ function parseModel(term: Term): DossierModel | null {
  * 
  * Format: field(name, type, label) or field(name, type, label, reference(model))
  */
-function parseModelField(term: Term): DossierModelField | null {
+function parseModelField(term: Term): AgentCardModelField | null {
   if (term.type !== 'compound' || term.functor !== 'field') return null;
   if (term.args.length < 3) return null;
 
   const name = extractString(term.args[0]);
-  const type = extractString(term.args[1]) as DossierModelField['type'];
+  const type = extractString(term.args[1]) as AgentCardModelField['type'];
   const label = extractString(term.args[2]);
 
   if (!name || !type || !label) return null;
 
-  const field: DossierModelField = { name, type, label };
+  const field: AgentCardModelField = { name, type, label };
 
   // Check for reference (optional 4th arg)
   if (term.args.length >= 4) {
@@ -1190,17 +1190,17 @@ function parseModelField(term: Term): DossierModelField | null {
  * ])
  * ```
  */
-function parseState(term: Term | undefined): DossierState | undefined {
+function parseState(term: Term | undefined): AgentCardState | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const variables: DossierStateVariable[] = [];
+  const variables: AgentCardStateVariable[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound') continue;
 
     // Each item is: variable_name([type(...), source(...), ...])
     const name = item.functor;
-    const variable: DossierStateVariable = { name, type: 'unknown' };
+    const variable: AgentCardStateVariable = { name, type: 'unknown' };
     
     const propsList = item.args[0];
     if (propsList?.type === 'list') {
@@ -1255,10 +1255,10 @@ function parseState(term: Term | undefined): DossierState | undefined {
  * ])
  * ```
  */
-function parseComponents(term: Term | undefined): DossierComponent[] | undefined {
+function parseComponents(term: Term | undefined): AgentCardComponent[] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const components: DossierComponent[] = [];
+  const components: AgentCardComponent[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'component') continue;
@@ -1266,7 +1266,7 @@ function parseComponents(term: Term | undefined): DossierComponent[] | undefined
     const name = extractString(item.args[0]);
     if (!name) continue;
 
-    const component: DossierComponent = { name };
+    const component: AgentCardComponent = { name };
     const propsList = item.args[1];
 
     if (propsList?.type === 'list') {
@@ -1281,7 +1281,7 @@ function parseComponents(term: Term | undefined): DossierComponent[] | undefined
             component.description = extractString(prop.args[0]) || undefined;
             break;
           case 'type':
-            component.type = extractString(prop.args[0]) as DossierComponentType || undefined;
+            component.type = extractString(prop.args[0]) as AgentCardComponentType || undefined;
             break;
           case 'source':
             component.source = extractString(prop.args[0]) || undefined;
@@ -1327,20 +1327,20 @@ function parseComponents(term: Term | undefined): DossierComponent[] | undefined
  * 
  * Format: fields([field(name, type, "Label"), ...])
  */
-function parseComponentFields(term: Term | undefined): DossierField[] | undefined {
+function parseComponentFields(term: Term | undefined): AgentCardField[] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const fields: DossierField[] = [];
+  const fields: AgentCardField[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'field') continue;
 
     const name = extractString(item.args[0]);
-    const type = (extractString(item.args[1]) || 'string') as DossierFieldType;
+    const type = (extractString(item.args[1]) || 'string') as AgentCardFieldType;
     const label = extractString(item.args[2]) || name || '';
 
     if (name) {
-      const field: DossierField = { name, type, label };
+      const field: AgentCardField = { name, type, label };
       
       // Parse optional properties from 4th argument if present
       const optsList = item.args[3];
@@ -1377,10 +1377,10 @@ function parseComponentFields(term: Term | undefined): DossierField[] | undefine
  * 
  * Format: actions([action(intent, "Label", icon, [options]), ...])
  */
-function parseComponentActions(term: Term | undefined): DossierComponentAction[] | undefined {
+function parseComponentActions(term: Term | undefined): AgentCardComponentAction[] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const actions: DossierComponentAction[] = [];
+  const actions: AgentCardComponentAction[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'action') continue;
@@ -1389,7 +1389,7 @@ function parseComponentActions(term: Term | undefined): DossierComponentAction[]
     const label = extractString(item.args[1]) || intent || '';
 
     if (intent) {
-      const action: DossierComponentAction = { intent, label };
+      const action: AgentCardComponentAction = { intent, label };
       
       // Optional icon (3rd arg)
       if (item.args[2]) {
@@ -1424,19 +1424,19 @@ function parseComponentActions(term: Term | undefined): DossierComponentAction[]
  * 
  * Format: filters([filter(field, type, "Label", [options]), ...])
  */
-function parseComponentFilters(term: Term | undefined): DossierComponentFilter[] | undefined {
+function parseComponentFilters(term: Term | undefined): AgentCardComponentFilter[] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const filters: DossierComponentFilter[] = [];
+  const filters: AgentCardComponentFilter[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'filter') continue;
 
     const field = extractString(item.args[0]);
-    const type = (extractString(item.args[1]) || 'select') as DossierComponentFilter['type'];
+    const type = (extractString(item.args[1]) || 'select') as AgentCardComponentFilter['type'];
 
     if (field) {
-      const filter: DossierComponentFilter = { field, type };
+      const filter: AgentCardComponentFilter = { field, type };
       
       // Optional label (3rd arg)
       if (item.args[2]) {
@@ -1464,10 +1464,10 @@ function parseComponentFilters(term: Term | undefined): DossierComponentFilter[]
 /**
  * Parse home sections.
  */
-function parseHome(term: Term | undefined): DossierHomeSection[] | undefined {
+function parseHome(term: Term | undefined): AgentCardHomeSection[] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const sections: DossierHomeSection[] = [];
+  const sections: AgentCardHomeSection[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'section') continue;
@@ -1475,7 +1475,7 @@ function parseHome(term: Term | undefined): DossierHomeSection[] | undefined {
     const name = extractString(item.args[0]);
     if (!name) continue;
 
-    const section: DossierHomeSection = { name };
+    const section: AgentCardHomeSection = { name };
     const propsList = item.args[1];
 
     if (propsList?.type === 'list') {
@@ -1530,10 +1530,10 @@ function parseHome(term: Term | undefined): DossierHomeSection[] | undefined {
  * ])
  * ```
  */
-function parseViews(term: Term | undefined): DossierView[] | undefined {
+function parseViews(term: Term | undefined): AgentCardView[] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const views: DossierView[] = [];
+  const views: AgentCardView[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'view') continue;
@@ -1541,7 +1541,7 @@ function parseViews(term: Term | undefined): DossierView[] | undefined {
     const name = extractString(item.args[0]);
     if (!name) continue;
 
-    const view: DossierView = { name };
+    const view: AgentCardView = { name };
     const propsList = item.args[1];
 
     if (propsList?.type === 'list') {
@@ -1569,7 +1569,7 @@ function parseViews(term: Term | undefined): DossierView[] | undefined {
             break;
           case 'layout':
             // How to arrange components: single, split, tabs, stack
-            view.layout = extractString(prop.args[0]) as DossierView['layout'] || undefined;
+            view.layout = extractString(prop.args[0]) as AgentCardView['layout'] || undefined;
             break;
           case 'icon':
             view.icon = extractString(prop.args[0]) || undefined;
@@ -1591,10 +1591,10 @@ function parseViews(term: Term | undefined): DossierView[] | undefined {
  * Parse view columns.
  * Format: columns([column(name, type, "Label"), ...])
  */
-function parseViewColumns(term: Term | undefined): DossierViewColumn[] | undefined {
+function parseViewColumns(term: Term | undefined): AgentCardViewColumn[] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const columns: DossierViewColumn[] = [];
+  const columns: AgentCardViewColumn[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'column') continue;
@@ -1604,7 +1604,7 @@ function parseViewColumns(term: Term | undefined): DossierViewColumn[] | undefin
     const label = extractString(item.args[2]) || name || '';
 
     if (name) {
-      const column: DossierViewColumn = { name, type, label };
+      const column: AgentCardViewColumn = { name, type, label };
       
       // Parse optional properties from 4th argument if present
       const optsList = item.args[3];
@@ -1636,10 +1636,10 @@ function parseViewColumns(term: Term | undefined): DossierViewColumn[] | undefin
  * Parse view actions.
  * Format: actions([action(intent, "Label", icon), ...])
  */
-function parseViewActions(term: Term | undefined): DossierViewAction[] | undefined {
+function parseViewActions(term: Term | undefined): AgentCardViewAction[] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const actions: DossierViewAction[] = [];
+  const actions: AgentCardViewAction[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'action') continue;
@@ -1648,7 +1648,7 @@ function parseViewActions(term: Term | undefined): DossierViewAction[] | undefin
     const label = extractString(item.args[1]) || intent || '';
 
     if (intent) {
-      const action: DossierViewAction = { intent, label };
+      const action: AgentCardViewAction = { intent, label };
       
       // Optional icon (3rd arg)
       if (item.args[2]) {
@@ -1682,19 +1682,19 @@ function parseViewActions(term: Term | undefined): DossierViewAction[] | undefin
  * Parse view filters.
  * Format: filters([filter(field, type, "Label", [options]), ...])
  */
-function parseViewFilters(term: Term | undefined): DossierViewFilter[] | undefined {
+function parseViewFilters(term: Term | undefined): AgentCardViewFilter[] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const filters: DossierViewFilter[] = [];
+  const filters: AgentCardViewFilter[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'filter') continue;
 
     const field = extractString(item.args[0]);
-    const type = (extractString(item.args[1]) || 'select') as DossierViewFilter['type'];
+    const type = (extractString(item.args[1]) || 'select') as AgentCardViewFilter['type'];
 
     if (field) {
-      const filter: DossierViewFilter = { field, type };
+      const filter: AgentCardViewFilter = { field, type };
       
       // Optional label (3rd arg)
       if (item.args[2]) {
@@ -1719,7 +1719,7 @@ function parseViewFilters(term: Term | undefined): DossierViewFilter[] | undefin
  * Parse default sort configuration.
  * Format: default_sort([field(name), direction(asc|desc)])
  */
-function parseDefaultSort(term: Term | undefined): DossierComponent['defaultSort'] | undefined {
+function parseDefaultSort(term: Term | undefined): AgentCardComponent['defaultSort'] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
   let field: string | undefined;
@@ -1747,10 +1747,10 @@ function parseDefaultSort(term: Term | undefined): DossierComponent['defaultSort
 /**
  * Parse layout hints.
  */
-function parseLayouts(term: Term | undefined): DossierLayoutHint[] | undefined {
+function parseLayouts(term: Term | undefined): AgentCardLayoutHint[] | undefined {
   if (!term || term.type !== 'list') return undefined;
 
-  const layouts: DossierLayoutHint[] = [];
+  const layouts: AgentCardLayoutHint[] = [];
 
   for (const item of term.items) {
     if (item.type !== 'compound' || item.functor !== 'layout_hint') continue;

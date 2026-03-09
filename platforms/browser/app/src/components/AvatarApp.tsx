@@ -79,11 +79,11 @@ export function AvatarApp({ agentId, agentInfo, debug = false }: AvatarAppProps)
     );
   }
 
-  // Show connection steps when connecting and no dossier loaded yet
+  // Show connection steps when connecting and no agentCard loaded yet
   // This provides a nice animated loading experience on first connect
-  const isInitialConnect = !state.dossier && state.connectionStep !== 'ready';
+  const isInitialConnect = !state.agentCard && state.connectionStep !== 'ready';
   if (isInitialConnect && state.connectionStep !== 'idle') {
-    const agentName = agentInfo.dossier?.presentation?.brand?.name || agentId;
+    const agentName = agentInfo.agentCard?.presentation?.brand?.name || agentId;
     return <ConnectionStepsScreen currentStep={state.connectionStep} agentName={agentName} />;
   }
 
@@ -92,7 +92,7 @@ export function AvatarApp({ agentId, agentInfo, debug = false }: AvatarAppProps)
     <ChatHeader
       agentId={agentId}
       agentInfo={agentInfo}
-      dossier={state.dossier}
+      agentCard={state.agentCard}
       connectionState={state.connectionState}
     />
   );

@@ -60,11 +60,11 @@ export function ChatMessages({ state }: ChatMessagesProps) {
 
   // Get greeting message from brand greetings or default
   const greeting = useMemo(() => {
-    const customGreetings = state.dossier?.presentation?.brand?.greetings;
+    const customGreetings = state.agentCard?.presentation?.brand?.greetings;
     const greetingsToUse = customGreetings?.length ? customGreetings : DEFAULT_GREETINGS;
     const seed = getGreetingSeed(state.agentId, sessionSeedRef.current);
     return pickGreeting(seed, greetingsToUse);
-  }, [state.dossier?.presentation?.brand?.greetings, state.agentId]);
+  }, [state.agentCard?.presentation?.brand?.greetings, state.agentId]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

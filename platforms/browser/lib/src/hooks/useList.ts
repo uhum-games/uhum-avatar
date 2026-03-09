@@ -26,7 +26,7 @@
  */
 
 import { useEffect, useCallback, useMemo, useState } from 'react';
-import { DossierComponent, DossierModel, AvatarState, ListCache } from '../types';
+import { AgentCardComponent, AgentCardModel, AvatarState, ListCache } from '../types';
 import { AvatarClient } from '../avatar';
 
 /**
@@ -34,7 +34,7 @@ import { AvatarClient } from '../avatar';
  */
 export interface UseListOptions {
   /** The component definition (includes source, listIntent, fields) */
-  component: DossierComponent;
+  component: AgentCardComponent;
   /** The AvatarClient instance */
   client: AvatarClient;
   /** Whether to automatically fetch on mount (default: true) */
@@ -54,7 +54,7 @@ export interface UseListResult<T = Record<string, unknown>> {
   /** Whether data has been fetched at least once */
   fetched: boolean;
   /** The model definition (from dossier) */
-  model: DossierModel | undefined;
+  model: AgentCardModel | undefined;
   /** Cache info */
   cache: ListCache | undefined;
   /** Trigger a fetch (even if cached) */
@@ -191,7 +191,7 @@ export function getModelFacts<T = Record<string, unknown>>(
 export function getModelDefinition(
   state: AvatarState,
   modelName: string
-): DossierModel | undefined {
+): AgentCardModel | undefined {
   return state.dossier?.models?.find(m => m.name === modelName);
 }
 
