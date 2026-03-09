@@ -1,8 +1,11 @@
 # Input Handling Specification
 
-This document defines how the Avatar handles user input.
+This document defines how the Avatar handles user input and routes it to the appropriate Brain.
 
-> **Related:** See [Brain Gateway Spec](../../uhum-brain/specs/GATEWAY.md) for the Brain-side processing.
+> **Related:**
+> - [Brain Gateway Spec](../uhum-brain/specs/GATEWAY.md) — Brain-side processing (orchestrator, Trust Zones)
+> - [Network Spec](../uhum-brain/specs/NETWORK.md) — Semantic discovery and Compass routing
+> - [Architecture Spec](../uhum-brain/specs/ARCHITECTURE.md) — Agent Card for capability matching
 
 ---
 
@@ -34,6 +37,13 @@ Avatar → MESSAGE → Brain (LLM + Execute) → DECISION → Avatar
 ```
 
 The Brain interprets AND executes in one call. This keeps the Avatar thin and reduces latency.
+
+### Future: Multi-Agent Routing via Network
+
+When connected to multiple Brains, the Avatar can use the [Uhum Network](../uhum-brain/specs/NETWORK.md) for semantic routing:
+- **Compass** matches user requests to the best agent by capability
+- Agent Cards provide intent/domain metadata for routing decisions
+- The Avatar does not need a local LLM for routing — the Network provides deterministic selection
 
 ---
 

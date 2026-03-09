@@ -1,6 +1,11 @@
 # Platform Architecture Specification
 
-This document defines how the Avatar is implemented across different platforms.
+This document defines how the Avatar is implemented across different platforms. The Avatar follows a Core + Shell architecture that mirrors the Brain's Functional Core / Imperative Shell pattern.
+
+> **Related:**
+> - [Architecture Spec](../uhum-brain/specs/ARCHITECTURE.md) — Agent Card, Brain architecture
+> - [Uhum View](./UHUM-VIEW.md) — View rendering layer
+> - [Network Spec](../uhum-brain/specs/NETWORK.md) — Discovery, semantic routing
 
 ---
 
@@ -20,7 +25,7 @@ The Avatar follows a **Core + Shell** architecture:
 │                     AVATAR CORE (Rust)                           │
 │                                                                  │
 │   ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│   │  Protocol   │  │   Session   │  │     Agent Dossier       │ │
+│   │  Protocol   │  │   Session   │  │      Agent Card          │ │
 │   │  (Terms,    │  │  (Cursors,  │  │   (Capabilities,        │ │
 │   │   Frames)   │  │   Dedup)    │  │    Intent Discovery)    │ │
 │   └─────────────┘  └─────────────┘  └─────────────────────────┘ │

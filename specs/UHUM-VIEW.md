@@ -2,6 +2,11 @@
 
 This document defines **Uhum View** — the unified visual interface for the Uhum network.
 
+> **Related:**
+> - [Architecture Spec](../uhum-brain/specs/ARCHITECTURE.md) — Agent Card, Trust Zones
+> - [View Instructions](./VIEW-INSTRUCTIONS.md) — How Brain guides Avatar presentation
+> - [Platforms](./PLATFORMS.md) — Platform-specific rendering
+
 ---
 
 ## 1. Design Philosophy
@@ -54,7 +59,7 @@ Uhum View uses a three-layer architecture for rendering decisions:
 │  - Accessibility: high contrast, large text, screen reader       │
 │  - Personal shortcuts and quick actions                          │
 ├─────────────────────────────────────────────────────────────────┤
-│  LAYER 2: PRESENTATION HINTS (Part of Agent Dossier, optional)   │
+│  LAYER 2: PRESENTATION HINTS (Part of Agent Card, optional)       │
 │                                                                  │
 │  Defined by agent builder. Hints, not commands.                  │
 │  Examples:                                                       │

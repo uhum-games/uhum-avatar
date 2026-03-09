@@ -1,6 +1,11 @@
 # View Instructions Specification
 
-This document defines **View Instructions** — the protocol for Brain to guide Avatar's presentation.
+This document defines **View Instructions** — the protocol for Brain to guide Avatar's presentation. View instructions are produced by the deterministic kernel (Zone A) as part of decision output, and processed reactively by the Avatar.
+
+> **Related:**
+> - [Architecture Spec](../uhum-brain/specs/ARCHITECTURE.md) — Kernel output, Trust Zones
+> - [Effects Spec](../uhum-brain/specs/EFFECTS.md) — Effect completion/failure events that may trigger view updates
+> - [Uhum View](./UHUM-VIEW.md) — Layered rendering architecture
 
 ---
 
