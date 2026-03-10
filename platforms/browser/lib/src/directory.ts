@@ -1,7 +1,7 @@
 /**
  * Uhum Directory Service Client
  *
- * Resolves agent IDs to connection information (WebSocket URL, dossier).
+ * Resolves agent IDs to connection information (WebSocket URL, agentCard).
  * The Avatar bundle has the agent ID baked in at build time, and uses
  * this service to fetch the Brain URL at runtime.
  *
@@ -14,12 +14,12 @@
 export interface AgentInfo {
   /** WebSocket URL to connect to the Brain */
   wsUrl: string;
-  /** Optional agent dossier with presentation hints */
-  dossier?: AgentCard;
+  /** Optional agent card with presentation hints */
+  agentCard?: AgentCard;
 }
 
 /**
- * Agent dossier containing metadata and presentation hints.
+ * Agent card containing metadata and presentation hints.
  */
 export interface AgentCard {
   /** Display name */
@@ -128,7 +128,7 @@ export class DirectoryClient {
    * Resolve an agent ID to connection information.
    *
    * @param agentId - The agent ID to resolve (e.g., "acme.billing")
-   * @returns Agent information including WebSocket URL and dossier
+   * @returns Agent information including WebSocket URL and agentCard
    * @throws {DirectoryError} If resolution fails
    */
   async resolve(agentId: string): Promise<AgentInfo> {
@@ -239,7 +239,7 @@ export class DirectoryClient {
 
       return {
         wsUrl: data.wsUrl,
-        dossier: data.dossier,
+        agentCard: data.agentCard,
       };
     } catch (error) {
       clearTimeout(timeoutId);
@@ -279,7 +279,7 @@ export class DirectoryClient {
  * Create a mock directory client for development.
  *
  * @param mockWsUrl - WebSocket URL to return for all agent IDs
- * @param mockAgentCard - Optional dossier to return
+ * @param mockAgentCard - Optional agent card to return
  */
 export function createMockDirectory(mockWsUrl: string, mockAgentCard?: AgentCard): DirectoryClient {
   const client = new DirectoryClient();
@@ -289,7 +289,7 @@ export function createMockDirectory(mockWsUrl: string, mockAgentCard?: AgentCard
     console.log(`[MockDirectory] Resolving ${agentId} → ${mockWsUrl}`);
     return {
       wsUrl: mockWsUrl,
-      dossier: mockAgentCard,
+      agentCard: mockAgentCard,
     };
   };
 

@@ -9,7 +9,7 @@
 
 use std::collections::HashSet;
 
-use crate::agent_card::AgentDossier;
+use crate::agent_card::AgentCard;
 use ua_core::{AvatarError, Clock, Random, Result, Storage, Transport};
 use ub_core::{Cursor, Timestamp};
 use ub_protocol::{Frame, Headers, Term};
@@ -90,8 +90,8 @@ where
     clock: C,
     /// Random for ID generation.
     random: R,
-    /// Agent agent_card (received in WELCOME).
-    agent_card: Option<AgentDossier>,
+    /// Agent Card (received in WELCOME).
+    agent_card: Option<AgentCard>,
     /// Current cursor position.
     cursor: Cursor,
     /// Resume token for reconnection.
@@ -141,8 +141,8 @@ where
         self.state
     }
 
-    /// Get the agent agent_card (available after WELCOME).
-    pub fn agent_card(&self) -> Option<&AgentDossier> {
+    /// Get the agent Card (available after WELCOME).
+    pub fn agent_card(&self) -> Option<&AgentCard> {
         self.agent_card.as_ref()
     }
 
@@ -210,6 +210,20 @@ where
         Ok(message_id)
     }
 
+    /// Send a natural language message to the Agent.
+    pub async fn send_chat(&mut self, text: &str) -> Result<String> {
+        if !self.transport.is_connected() {
+            return Err(AvatarError::NotConnected);
+        }
+
+        let message_id = self.random.message_id().to_string();
+        let chat_frame = self.build_chat_frame(&message_id, text);
+
+        self.send_frame(&chat_frame).await?;
+
+        Ok(message_id)
+    }
+
     /// Acknowledge events up to the given cursor.
     pub async fn acknowledge(&mut self, cursor: Cursor) -> Result<()> {
         if !self.is_ready() {
@@ -268,6 +282,10 @@ where
                 let participants = self.handle_presence(&frame)?;
                 Ok(Some(IncomingMessage::Presence(participants)))
             }
+            "chat" => {
+                let text = self.handle_chat(&frame)?;
+                Ok(Some(IncomingMessage::Chat(text)))
+            }
             "pong" => {
                 self.last_pong = Some(self.clock.now_millis());
                 Ok(Some(IncomingMessage::Pong))
@@ -288,7 +306,7 @@ where
         if let Some(body) = &frame.body {
             // Try to parse body as Term
             if let Ok(term) = ub_protocol::parse_term(body) {
-                self.agent_card = Some(AgentDossier::from_term(&term)?);
+                self.agent_card = Some(AgentCard::from_term(&term)?);
             }
         }
 
@@ -340,6 +358,13 @@ where
 
     fn handle_presence(&mut self, _frame: &Frame) -> Result<Vec<Participant>> {
         Ok(Vec::new())
+    }
+
+    fn handle_chat(&mut self, frame: &Frame) -> Result<String> {
+        frame
+            .body
+            .clone()
+            .ok_or_else(|| AvatarError::MissingData("Chat message body".into()))
     }
 
     fn handle_error(&mut self, frame: &Frame) -> Result<(String, String)> {
@@ -407,6 +432,15 @@ where
         Frame::new(headers).with_body(body)
     }
 
+    fn build_chat_frame(&self, message_id: &str, text: &str) -> Frame {
+        let mut headers = Headers::new();
+        headers.set("type", "chat");
+        headers.set("id", message_id);
+        headers.set("at", self.clock.now_millis().as_millis().to_string());
+
+        Frame::new(headers).with_body(text.to_string())
+    }
+
     fn build_ack_frame(&self, cursor: Cursor) -> Frame {
         let mut headers = Headers::new();
         headers.set("type", "ack");
@@ -434,6 +468,8 @@ pub enum IncomingMessage {
     Welcome,
     /// MEMORY with events.
     Memory,
+    /// Chat message received.
+    Chat(String),
     /// DECISION response.
     Decision(Decision),
     /// PRESENCE update.

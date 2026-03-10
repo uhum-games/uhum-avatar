@@ -61,7 +61,7 @@ export interface PresentationEngineConfig {
  * @example
  * ```typescript
  * const engine = new PresentationEngine();
- * engine.loadPresentation(dossier.presentation);
+ * engine.loadPresentation(agentCard.presentation);
  * 
  * // Get current view based on state
  * const result = engine.selectView(stateManager.getState());
@@ -80,7 +80,7 @@ export class PresentationEngine {
   }
 
   /**
-   * Load presentation definitions from dossier.
+   * Load presentation definitions from agent card.
    */
   loadPresentation(presentation?: AgentCardPresentation): void {
     // Clear existing data

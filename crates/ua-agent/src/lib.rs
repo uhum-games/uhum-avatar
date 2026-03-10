@@ -32,7 +32,7 @@ pub mod session;
 // Re-exports
 pub use cache::{CachedEvent, DerivedView, MemoryCache};
 pub use agent_card::{
-    AgentDossier, Brand, DataSource, Endpoint, HomeSection, Intent, LayoutHint, Param, ParamType,
+    AgentCard, Brand, DataSource, Endpoint, HomeSection, Intent, LayoutHint, Param, ParamType,
     PresentationHints,
 };
 pub use queue::{IntentionQueue, QueuedIntention};

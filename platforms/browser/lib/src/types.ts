@@ -69,11 +69,11 @@ export type ConnectionStep =
   | 'locating'      // Finding the agent
   | 'connecting'    // Opening WebSocket
   | 'greeting'      // Sent JOIN, waiting for WELCOME
-  | 'loading'       // Parsing dossier
+  | 'loading'       // Parsing agent card
   | 'ready';        // All set!
 
 /**
- * Agent intent from dossier.
+ * Agent intent from card.
  */
 export interface AgentCardIntent {
   name: string;
@@ -83,7 +83,7 @@ export interface AgentCardIntent {
 }
 
 /**
- * Intent parameter from dossier.
+ * Intent parameter from card.
  */
 export interface AgentCardParam {
   name: string;
@@ -93,7 +93,7 @@ export interface AgentCardParam {
 }
 
 /**
- * Brand info from dossier presentation.
+ * Brand info from card presentation.
  */
 export interface AgentCardBrand {
   name?: string;
@@ -107,7 +107,7 @@ export interface AgentCardBrand {
 }
 
 /**
- * Home section from dossier presentation.
+ * Home section from card presentation.
  */
 export interface AgentCardHomeSection {
   name: string;
@@ -259,7 +259,7 @@ export type AgentCardComponentType =
   | 'chat';
 
 /**
- * Component definition from dossier presentation.
+ * Component definition from card presentation.
  * 
  * A Component is a reusable UI building block. Components can:
  * - Display data from a model (source)
@@ -358,7 +358,7 @@ export interface AgentCardStateVariable {
 }
 
 /**
- * State schema from dossier presentation.
+ * State schema from card presentation.
  * 
  * Defines the UI state variables for the Avatar presentation layer.
  * Controls which views and components are shown based on user interactions.
@@ -375,7 +375,7 @@ export interface AgentCardState {
 // =============================================================================
 
 /**
- * View definition from dossier presentation.
+ * View definition from card presentation.
  * 
  * A View is a composition/suggestion of which components to show together.
  * Views represent different "pages" or "screens" in the Avatar.
@@ -476,7 +476,7 @@ export type AgentCardViewType =
 // =============================================================================
 
 /**
- * Layout hint from dossier presentation.
+ * Layout hint from card presentation.
  */
 export interface AgentCardLayoutHint {
   dataType: string;
@@ -489,7 +489,7 @@ export interface AgentCardLayoutHint {
 // =============================================================================
 
 /**
- * Presentation hints from agent dossier.
+ * Presentation hints from agent card.
  * 
  * Contains all UI-related hints from the agent:
  * - **Brand** - Visual identity (colors, logo, greetings)
@@ -537,7 +537,7 @@ export interface AgentCardPresentation {
 }
 
 /**
- * Agent identity from dossier.
+ * Agent identity from card.
  */
 export interface AgentCardIdentity {
   id: string;
@@ -548,11 +548,11 @@ export interface AgentCardIdentity {
 }
 
 /**
- * Agent dossier - capabilities and presentation hints.
+ * Agent Card - capabilities and presentation hints.
  * 
  * Received from the Brain in the WELCOME message.
  */
-export interface AgentAgentCard {
+export interface AgentCard {
   identity: AgentCardIdentity;
   intents: AgentCardIntent[];
   /** Model definitions - schemas for facts (defines data structure) */
@@ -676,8 +676,8 @@ export interface AvatarState {
   connectionStep: ConnectionStep;
 
   // === AgentCard (from Agent) ===
-  /** Agent dossier with capabilities and presentation hints */
-  dossier: AgentAgentCard | null;
+  /** Agent card with capabilities and presentation hints */
+  agentCard: AgentCard | null;
 }
 
 /**
@@ -727,8 +727,8 @@ export type Action =
   | { type: 'SET_CONNECTED'; connected: boolean; agentId?: string }
   | { type: 'SET_CONNECTION_STATE'; state: ConnectionState }
   | { type: 'SET_CONNECTION_STEP'; step: ConnectionStep }
-  | { type: 'SET_DOSSIER'; dossier: AgentAgentCard }
-  | { type: 'CLEAR_DOSSIER' };
+  | { type: 'SET_AGENT_CARD'; agentCard: AgentCard }
+  | { type: 'CLEAR_AGENT_CARD' };
 
 /**
  * View instruction from Agent.
@@ -761,7 +761,7 @@ export function createInitialState(): AvatarState {
     agentId: null,
     connectionState: 'disconnected',
     connectionStep: 'idle',
-    dossier: null,
+    agentCard: null,
   };
 }
 
@@ -1037,11 +1037,11 @@ export function avatarReducer(state: AvatarState, action: Action): AvatarState {
     case 'SET_CONNECTION_STEP':
       return { ...state, connectionStep: action.step };
 
-    case 'SET_DOSSIER':
-      return { ...state, dossier: action.dossier };
+    case 'SET_AGENT_CARD':
+      return { ...state, agentCard: action.agentCard };
 
-    case 'CLEAR_DOSSIER':
-      return { ...state, dossier: null };
+    case 'CLEAR_AGENT_CARD':
+      return { ...state, agentCard: null };
 
     default:
       return state;

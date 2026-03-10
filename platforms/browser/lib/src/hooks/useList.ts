@@ -53,7 +53,7 @@ export interface UseListResult<T = Record<string, unknown>> {
   loading: boolean;
   /** Whether data has been fetched at least once */
   fetched: boolean;
-  /** The model definition (from dossier) */
+  /** The model definition (from agent card) */
   model: AgentCardModel | undefined;
   /** Cache info */
   cache: ListCache | undefined;
@@ -91,10 +91,10 @@ export function useList<T = Record<string, unknown>>(
   // Get list intent from component (e.g., "list_books")
   const listIntent = component.listIntent ?? `list_${modelName}s`;
 
-  // Get model definition from dossier
+  // Get model definition from agent card
   const model = useMemo(() => {
-    return state.dossier?.models?.find(m => m.name === modelName);
-  }, [state.dossier, modelName]);
+    return state.agentCard?.models?.find(m => m.name === modelName);
+  }, [state.agentCard, modelName]);
 
   // Get entities from entityStore
   const data = useMemo(() => {
@@ -186,13 +186,13 @@ export function getModelFacts<T = Record<string, unknown>>(
 }
 
 /**
- * Get model definition from the dossier.
+ * Get model definition from the agent card.
  */
 export function getModelDefinition(
   state: AvatarState,
   modelName: string
 ): AgentCardModel | undefined {
-  return state.dossier?.models?.find(m => m.name === modelName);
+  return state.agentCard?.models?.find(m => m.name === modelName);
 }
 
 export default useList;

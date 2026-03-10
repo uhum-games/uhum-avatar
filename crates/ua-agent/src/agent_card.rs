@@ -1,6 +1,6 @@
 //! Agent AgentCard parsing and representation.
 //!
-//! The Agent AgentCard is the agent's self-description, containing:
+//! The Agent Card is the agent's self-description, containing:
 //! - Identity (id, name, version)
 //! - Intents (what the agent can do - semantic)
 //! - Endpoints (how to connect)
@@ -19,9 +19,9 @@
 use ua_core::Result;
 use ub_protocol::Term;
 
-/// An Agent AgentCard - the agent's self-description.
+/// An Agent Card - the agent's self-description.
 #[derive(Debug, Clone)]
-pub struct AgentDossier {
+pub struct AgentCard {
     /// Agent ID (e.g., "acme.billing").
     pub id: String,
     /// Human-readable name.
@@ -39,12 +39,12 @@ pub struct AgentDossier {
     pub presentation: Option<PresentationHints>,
 }
 
-impl AgentDossier {
-    /// Parse an Agent AgentCard from a Term.
+impl AgentCard {
+    /// Parse an Agent Card from a Term.
     ///
     /// Expected format:
     /// ```prolog
-    /// agent(
+    /// agent_card(
     ///   id('acme.billing'),
     ///   name("Acme Billing"),
     ///   intents([...]),
@@ -442,36 +442,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_empty_dossier() {
+    fn test_empty_agent_card() {
         let term = Term::Atom("unknown".to_string());
-        let agent_card = AgentDossier::from_term(&term).unwrap();
+        let agent_card = AgentCard::from_term(&term).unwrap();
         assert_eq!(agent_card.id, "unknown");
         assert!(!agent_card.has_presentation_hints());
     }
 
     #[test]
-    fn test_dossier_with_id() {
+    fn test_agent_card_with_id() {
         let term = Term::Compound {
-            functor: "agent".to_string(),
+            functor: "agent_card".to_string(),
             args: vec![Term::Compound {
                 functor: "id".to_string(),
                 args: vec![Term::Atom("acme.billing".to_string())],
             }],
         };
-        let agent_card = AgentDossier::from_term(&term).unwrap();
+        let agent_card = AgentCard::from_term(&term).unwrap();
         assert_eq!(agent_card.id, "acme.billing");
     }
 
     #[test]
     fn test_presentation_hints_are_optional() {
         let term = Term::Compound {
-            functor: "agent".to_string(),
+            functor: "agent_card".to_string(),
             args: vec![Term::Compound {
                 functor: "id".to_string(),
                 args: vec![Term::Atom("test.agent".to_string())],
             }],
         };
-        let agent_card = AgentDossier::from_term(&term).unwrap();
+        let agent_card = AgentCard::from_term(&term).unwrap();
         assert!(agent_card.presentation.is_none());
         assert!(!agent_card.has_presentation_hints());
     }

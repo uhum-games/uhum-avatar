@@ -40,9 +40,9 @@ pub enum AvatarError {
     #[error("Not connected to agent")]
     NotConnected,
 
-    /// Agent agent_card not found or invalid.
-    #[error("Agent agent_card not found")]
-    DossierNotFound,
+    /// Agent Card not found or invalid.
+    #[error("Agent Card not found")]
+    AgentCardNotFound,
 
     /// Session error.
     #[error("Session error: {0}")]

@@ -26,7 +26,7 @@ export type PresentationValue =
 /**
  * Presentation state - holds UI state variables.
  * 
- * Each key is a variable name from the dossier's state schema.
+ * Each key is a variable name from the agent card's state schema.
  * Values can be null (not set), atoms, or model references.
  */
 export type PresentationState = Record<string, PresentationValue>;
@@ -84,7 +84,7 @@ export function presentationReducer(
  * PresentationStateManager - Manages local UI state for the Avatar.
  * 
  * This is a simple reactive state container that:
- * - Holds presentation state variables defined in the dossier
+ * - Holds presentation state variables defined in the agentCard
  * - Notifies subscribers when state changes
  * - Is completely separate from Brain/agent state
  * 
@@ -92,8 +92,8 @@ export function presentationReducer(
  * ```typescript
  * const manager = new PresentationStateManager();
  * 
- * // Initialize from dossier schema
- * manager.initialize(dossier.presentation?.state?.variables ?? []);
+ * // Initialize from agentCard schema
+ * manager.initialize(agentCard.presentation?.state?.variables ?? []);
  * 
  * // Subscribe to changes
  * manager.subscribe((state) => {
@@ -113,7 +113,7 @@ export class PresentationStateManager {
   private subscribers: Set<PresentationStateSubscriber> = new Set();
 
   /**
-   * Initialize the state from a dossier state schema.
+   * Initialize the state from an agent card state schema.
    * All variables start as null.
    */
   initialize(schema: AgentCardStateVariable[]): void {

@@ -46,7 +46,7 @@
  *   
  *   return (
  *     <ViewRenderer
- *       presentation={state.dossier?.presentation}
+ *       presentation={state.agentCard?.presentation}
  *       facts={state.facts}
  *       onIntent={(intent, params) => avatar.sendIntention(intent, params)}
  *     />
@@ -63,7 +63,7 @@
  * 
  * ```typescript
  * const stateManager = createPresentationStateManager();
- * stateManager.initialize(dossier.presentation?.state?.variables ?? []);
+ * stateManager.initialize(agentCard.presentation?.state?.variables ?? []);
  * stateManager.setValue('selected_book', { id: '123', title: 'My Book' });
  * ```
  * 

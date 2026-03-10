@@ -55,6 +55,7 @@ export type MessageType =
   | 'ack'
   | 'ping'
   | 'pong'
+  | 'chat'
   | 'error'
   | 'backpressure';
 
@@ -434,6 +435,10 @@ export function parseMessage(input: string): UhumMessage {
     message.cursorEnd = parseInt(frame.headers.cursor_end, 10);
   }
 
+  if (frame.headers.at) {
+    message.at = parseInt(frame.headers.at, 10);
+  }
+
   if (frame.headers.trace) {
     message.trace = frame.headers.trace;
   }
@@ -523,6 +528,9 @@ export interface TextMessageOptions {
   text: string;
 }
 
+/**
+ * @deprecated Use buildChatMessage instead
+ */
 export function buildTextMessage(options: TextMessageOptions): string {
   // Use the same format as buildIntentionMessage: intention(message, [text(...)])
   return buildIntentionMessage({
@@ -531,6 +539,17 @@ export function buildTextMessage(options: TextMessageOptions): string {
     intent: 'message',
     params: { text: options.text },
   });
+}
+
+export function buildChatMessage(options: TextMessageOptions): string {
+  return buildMessage(
+    {
+      type: 'chat',
+      from: `uhum://avatar:${options.agentAddress}/${options.avatarId}`,
+      to: `uhum://${options.agentAddress}`,
+    },
+    Term.string(options.text)
+  );
 }
 
 export function buildLeaveMessage(avatarId: string, agentAddress: string): string {
@@ -748,7 +767,7 @@ export function termToObject(term: Term): unknown {
 // ============================================================================
 
 import type {
-  AgentAgentCard,
+  AgentCard,
   AgentCardIdentity,
   AgentCardIntent,
   AgentCardParam,
@@ -777,21 +796,21 @@ import type {
 } from './types';
 
 /**
- * Extract dossier from a WELCOME message body.
+ * Extract Agent Card from a WELCOME message body.
  *
  * Body format:
  * welcome([
  *   agent(id, version),
  *   resume(token),
  *   cursor(0),
- *   dossier([
+ *   agentCard([
  *     identity([id(...), name(...), ...]),
  *     intents([intent(...), ...]),
  *     presentation([...])
  *   ])
  * ])
  */
-export function extractAgentCardFromWelcome(body: Term): AgentAgentCard | null {
+export function extractAgentCardFromWelcome(body: Term): AgentCard | null {
   if (body.type !== 'compound' || body.functor !== 'welcome') {
     return null;
   }
@@ -801,15 +820,22 @@ export function extractAgentCardFromWelcome(body: Term): AgentAgentCard | null {
     return null;
   }
 
-  // Find dossier(...) in the welcome list
-  let dossierTerm: Term | null = null;
+  // Seek agent card in welcome list
+  for (const item of welcomeList.items) {
+    if (item.type === 'compound' && item.functor === 'agent_card') {
+      return parseAgentCard(item);
+    }
+  }
+
+  // Find agentCard(...) in the welcome list
+  let agentCardTerm: Term | null = null;
   let agentId = '';
   let agentVersion = '';
 
   for (const item of welcomeList.items) {
     if (item.type === 'compound') {
-      if (item.functor === 'dossier') {
-        dossierTerm = item;
+      if (item.functor === 'agentCard') {
+        agentCardTerm = item;
       } else if (item.functor === 'agent' && item.args.length >= 2) {
         // agent(id, version)
         agentId = extractString(item.args[0]) || '';
@@ -818,8 +844,8 @@ export function extractAgentCardFromWelcome(body: Term): AgentAgentCard | null {
     }
   }
 
-  if (!dossierTerm) {
-    // No dossier in WELCOME - create minimal one from agent info
+  if (!agentCardTerm) {
+    // No agentCard in WELCOME - create minimal one from agent info
     if (agentId) {
       return {
         identity: {
@@ -833,9 +859,9 @@ export function extractAgentCardFromWelcome(body: Term): AgentAgentCard | null {
     return null;
   }
 
-  // Parse dossier([...])
-  const dossierList = dossierTerm.args[0];
-  if (dossierList?.type !== 'list') {
+  // Parse agentCard([...])
+  const agentCardList = agentCardTerm.args[0];
+  if (agentCardList?.type !== 'list') {
     return null;
   }
 
@@ -844,26 +870,78 @@ export function extractAgentCardFromWelcome(body: Term): AgentAgentCard | null {
   let models: AgentCardModel[] | undefined;
   let presentation: AgentCardPresentation | undefined;
 
-  for (const item of dossierList.items) {
+  for (const item of agentCardList.items) {
     if (item.type !== 'compound') continue;
 
     switch (item.functor) {
       case 'identity':
-        identity = parseIdentity(item.args[0], agentId, agentVersion);
+        identity = parseIdentity(item, agentId, agentVersion);
         break;
       case 'intents':
-        intents = parseIntents(item.args[0]);
+        intents = parseIntents(item);
         break;
       case 'models':
-        models = parseModels(item.args[0]);
+        models = parseModels(item);
         break;
       case 'presentation':
-        presentation = parsePresentation(item.args[0]);
+        presentation = parsePresentation(item);
         break;
     }
   }
 
   return { identity, intents, models, presentation };
+}
+
+function parseAgentCard(term: Term): AgentCard | null {
+  if (term.type !== 'compound' || term.functor !== 'agent_card') {
+    return null;
+  }
+
+  const cardList = term.args[0];
+  if (cardList?.type !== 'list') {
+    return null;
+  }
+
+  const agentCard: Partial<AgentCard> = {};
+  let agentId = '';
+  let agentVersion = '';
+
+  // First pass to extract agent(id, version) if present
+  for (const item of cardList.items) {
+    if (item.type === 'compound' && item.functor === 'agent' && item.args.length >= 2) {
+      agentId = extractString(item.args[0]) || '';
+      agentVersion = extractString(item.args[1]) || '';
+      break;
+    }
+  }
+
+  for (const item of cardList.items) {
+    if (item.type !== 'compound') continue;
+
+    switch (item.functor) {
+      case 'identity':
+        agentCard.identity = parseIdentity(item, agentId, agentVersion);
+        break;
+      case 'intents':
+        agentCard.intents = parseIntents(item);
+        break;
+      case 'models':
+        agentCard.models = parseModels(item);
+        break;
+      case 'presentation':
+        agentCard.presentation = parsePresentation(item);
+        break;
+    }
+  }
+
+  // Ensure identity is set, even if not explicitly in the agent card
+  if (!agentCard.identity && agentId) {
+    agentCard.identity = { id: agentId, name: agentId, version: agentVersion || '0.0.0' };
+  } else if (!agentCard.identity) {
+    return null; // An agent card must have an identity
+  }
+
+  return agentCard as AgentCard;
 }
 
 /**
@@ -995,7 +1073,7 @@ function parseParams(term: Term | undefined): AgentCardParam[] {
  * - home([...]) - Landing page configuration
  * - layouts([layout_hint(...), ...]) - Layout hints
  * 
- * Note: models are at dossier root, not in presentation.
+ * Note: models are at agent card root, not in presentation.
  */
 function parsePresentation(term: Term | undefined): AgentCardPresentation | undefined {
   if (!term || term.type !== 'list') return undefined;

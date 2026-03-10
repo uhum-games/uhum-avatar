@@ -59,7 +59,7 @@ export interface UseEntityResult<T = Record<string, unknown>> {
   loading: boolean;
   /** Whether data has been fetched at least once */
   fetched: boolean;
-  /** The model definition (from dossier) */
+  /** The model definition (from agent card) */
   model: AgentCardModel | undefined;
   /** Cache info */
   cache: EntityCache | undefined;
@@ -100,10 +100,10 @@ export function useEntity<T = Record<string, unknown>>(
   // Determine the identifier field (default to 'id' or 'title')
   const idField = identifierField ?? 'id';
 
-  // Get model definition from dossier
+  // Get model definition from agent card
   const model = useMemo(() => {
-    return state.dossier?.models?.find(m => m.name === modelName);
-  }, [state.dossier, modelName]);
+    return state.agentCard?.models?.find(m => m.name === modelName);
+  }, [state.agentCard, modelName]);
 
   // Get entity from entityStore (find by identifier)
   const entity = useMemo(() => {

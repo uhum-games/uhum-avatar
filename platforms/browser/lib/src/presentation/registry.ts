@@ -2,7 +2,7 @@
  * Component Registry - Maps component types to React components
  * 
  * The Avatar has a fixed UI component library. This registry:
- * - Maps dossier component types (list, grid, detail, etc.) to React components
+ * - Maps agent card component types (list, grid, detail, etc.) to React components
  * - Provides a consistent API for rendering any component type
  * - Follows Avatar theme and brand guidelines
  * 
@@ -38,7 +38,7 @@ import type { AvatarClient } from '../avatar';
  * Props passed to every UI component.
  */
 export interface ComponentRenderProps {
-  /** The component definition from dossier */
+  /** The component definition from agent card */
   component: AgentCardComponent;
   /** The data to display (filtered facts for this component) */
   data: unknown[];
@@ -46,7 +46,7 @@ export interface ComponentRenderProps {
   item?: unknown;
   /** Current presentation state */
   state: PresentationState;
-  /** Model definition (from dossier) - used for schema-based rendering */
+  /** Model definition (from agent card) - used for schema-based rendering */
   model?: AgentCardModel;
   /** Whether data is currently loading */
   loading?: boolean;

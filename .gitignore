@@ -163,3 +163,7 @@ docker-compose.override.yml
 
 # UB specs generation outputs
 /specs/generated/
+
+# Browser platform build artifacts
+/platforms/browser/lib/dist/
+/platforms/browser/lib/tsconfig.tsbuildinfo

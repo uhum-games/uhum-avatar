@@ -21,6 +21,7 @@ import {
   parseMessage,
   buildJoinMessage,
   buildIntentionMessage,
+  buildChatMessage,
   buildTextMessage,
   buildLeaveMessage,
   buildAckMessage,
@@ -319,9 +320,9 @@ export class AvatarClient {
         this.dispatch({ type: 'SET_CONNECTION_STATE', state: 'disconnected' });
         this.dispatch({ type: 'SET_CONNECTED', connected: false });
         
-        // Reset step based on whether we have a dossier loaded
-        // If dossier is loaded, stay at 'ready', otherwise go to 'idle'
-        const hasAgentCard = this.state.dossier !== null;
+        // Reset step based on whether we have a card loaded
+        // If card is loaded, stay at 'ready', otherwise go to 'idle'
+        const hasAgentCard = this.state.agentCard !== null;
         this.dispatch({ type: 'SET_CONNECTION_STEP', step: hasAgentCard ? 'ready' : 'idle' });
 
         // Attempt reconnection if not intentional disconnect
@@ -421,9 +422,9 @@ export class AvatarClient {
     // Reset reconnection state
     this.reconnectAttempts = 0;
 
-    // Reset step based on whether we have dossier loaded
-    // Keeps dossier so UI can still show agent info while disconnected
-    const hasAgentCard = this.state.dossier !== null;
+    // Reset step based on whether we have card loaded
+    // Keeps card so UI can still show agent info while disconnected
+    const hasAgentCard = this.state.agentCard !== null;
     this.dispatch({ type: 'SET_CONNECTION_STEP', step: hasAgentCard ? 'ready' : 'idle' });
   }
 
@@ -466,7 +467,7 @@ export class AvatarClient {
   }
 
   /**
-   * Send a text message to the Agent (for NLU processing).
+   * Send a natural language message to the Agent (for chat/NLU).
    */
   sendMessage(text: string): void {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
@@ -474,14 +475,14 @@ export class AvatarClient {
       return;
     }
 
-    const textMsg = buildTextMessage({
+    const chatMsg = buildChatMessage({
       avatarId: this.sessionId,
       agentAddress: this.agentAddress,
       text,
     });
 
-    this.log('Sending MESSAGE:', textMsg);
-    this.socket.send(textMsg);
+    this.log('Sending CHAT:', chatMsg);
+    this.socket.send(chatMsg);
   }
 
   // === Private methods ===
@@ -535,6 +536,10 @@ export class AvatarClient {
           if (rejectConnect) {
             rejectConnect(new Error(errorMessage));
           }
+          break;
+
+        case 'chat':
+          this.handleChat(message);
           break;
 
         case 'pong':
@@ -604,7 +609,7 @@ export class AvatarClient {
   private handleWelcome(message: UhumMessage): void {
     this.log('Received WELCOME:', message);
 
-    // Update connection step - loading dossier
+    // Update connection step - loading agentCard
     this.dispatch({ type: 'SET_CONNECTION_STEP', step: 'loading' });
 
     // Extract cursor from welcome message
@@ -612,14 +617,14 @@ export class AvatarClient {
       this.lastCursor = message.cursor;
     }
 
-    // Extract dossier from body if available
+    // Extract agent card from body if available
     if (message.body) {
-      const dossier = extractAgentCardFromWelcome(message.body);
-      if (dossier) {
-        this.log('Parsed dossier:', dossier);
-        this.dispatch({ type: 'SET_DOSSIER', dossier });
+      const agentCard = extractAgentCardFromWelcome(message.body);
+      if (agentCard) {
+        this.log('Parsed agent card:', agentCard);
+        this.dispatch({ type: 'SET_AGENT_CARD', agentCard });
       } else {
-        this.log('No dossier in WELCOME message');
+        this.log('No agent card in WELCOME message');
       }
     }
 
@@ -635,8 +640,8 @@ export class AvatarClient {
     // Extract data from decision and convert to entities
     const dataTerms = extractDecisionFacts(message.body);
     if (dataTerms.length > 0) {
-      // Get model definitions from dossier (if available)
-      const models = this.state.dossier?.models;
+      // Get model definitions from card (if available)
+      const models = this.state.agentCard?.models;
 
       // Group by model and sync to entityStore
       const entitiesByModel = groupByModel(dataTerms, models);
@@ -712,8 +717,8 @@ export class AvatarClient {
     // Extract events and convert to entities
     const events = extractMemoryEvents(message.body);
     if (events.length > 0) {
-      // Get model definitions from dossier (if available)
-      const models = this.state.dossier?.models;
+      // Get model definitions from card (if available)
+      const models = this.state.agentCard?.models;
 
       // Group events by model and sync to entityStore
       const entitiesByModel = groupByModel(events, models);
@@ -726,6 +731,23 @@ export class AvatarClient {
       const eventsAsObjects = events.map(termToObject);
       this.log('Memory events (legacy):', eventsAsObjects);
       this.dispatch({ type: 'UPDATE_FACTS', facts: eventsAsObjects });
+    }
+  }
+
+  private handleChat(message: UhumMessage): void {
+    this.log('Received CHAT:', message);
+
+    if (!message.body) return;
+
+    const text = message.body.type === 'string' || message.body.type === 'atom'
+      ? message.body.value
+      : termToObject(message.body);
+
+    if (text && typeof text === 'string') {
+      this.dispatch({
+        type: 'ADD_AGENT_MESSAGE',
+        text,
+      });
     }
   }
 
